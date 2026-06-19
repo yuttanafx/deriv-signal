@@ -7,8 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:        #0a0c11;
+  :root{\n    --bg:        #0a0c11;
     --panel:     #11141c;
     --line:      #232838;
     --line-soft: #1a1e2a;
@@ -617,23 +616,19 @@
     </div>
   </header>
 
-  <!-- Watchlist picker -->
   <p class="section-label">เลือกสินทรัพย์ที่ติดตาม <small id="watch-count">0 รายการ</small></p>
   <div class="watchlist-picker" id="watchlist-picker"></div>
 
-  <!-- Combined stats across whole watchlist -->
   <div class="combined-banner" id="combined-banner" style="display:none;">
     <span class="cb-label">Win Rate รวมทุกสินทรัพย์</span>
     <span class="cb-val" id="cb-winrate">—</span>
   </div>
 
-  <!-- Watchlist cards -->
   <p class="section-label">รายการติดตาม (กดการ์ดเพื่อดูรายละเอียด)</p>
   <div class="watch-grid" id="watch-grid">
     <div class="watch-empty" id="watch-empty">ยังไม่ได้เลือกสินทรัพย์ — แตะชิปด้านบนเพื่อเริ่มติดตาม</div>
   </div>
 
-  <!-- Focused asset detail -->
   <div id="focus-section" style="display:none;">
 
     <div class="focus-label">
@@ -733,503 +728,338 @@
   <div class="log-panel">
     <div class="log-head">Signal Log — ทุกสินทรัพย์</div>
     <ul class="log-list" id="log-container">
-      <li>ระบบพร้อมทำงาน — เลือกสินทรัพย์ด้านบนเพื่อเริ่มติดตาม</li>
+      <li>ระบบพร้อมทำงาน — เลือกสินทรัพย์ด้านบนเพื่อเริ่มต้น</li>
     </ul>
   </div>
 
 </div>
 
 <script>
-  const APP_ID = '1089';
-  let ws;
-  let wsReady = false;
-
-  const ASSETS = [
-    { sym: 'R_10',    label: 'Vol 10' },
-    { sym: 'R_25',    label: 'Vol 25' },
-    { sym: 'R_50',    label: 'Vol 50' },
-    { sym: 'R_75',    label: 'Vol 75' },
-    { sym: 'R_100',   label: 'Vol 100' },
-    { sym: '1HZ10V',  label: 'Vol 10 (1s)' },
-    { sym: '1HZ25V',  label: 'Vol 25 (1s)' },
-    { sym: '1HZ30V',  label: 'Vol 30 (1s)' },
-    { sym: '1HZ50V',  label: 'Vol 50 (1s)' },
-    { sym: '1HZ75V',  label: 'Vol 75 (1s)' },
-    { sym: '1HZ100V', label: 'Vol 100 (1s)' },
-    { sym: 'R_150',   label: 'Vol 150' },
-    { sym: 'R_250',   label: 'Vol 250' },
+  // ---------------- Configuration & Catalog ----------------
+  const ALL_SYMBOLS = [
+    { sym: 'R_10',     label: 'Volatility 10 Index',    dec: 3 },
+    { sym: 'R_25',     label: 'Volatility 25 Index',    dec: 3 },
+    { sym: 'R_50',     label: 'Volatility 50 Index',    dec: 4 },
+    { sym: 'R_75',     label: 'Volatility 75 Index',    dec: 4 },
+    { sym: 'R_100',    label: 'Volatility 100 Index',   dec: 2 },
+    { sym: '1HZ10V',   label: 'Volatility 10 (1s) Index', dec: 3 },
+    { sym: '1HZ25V',   label: 'Volatility 25 (1s) Index', dec: 3 },
+    { sym: '1HZ30V',   label: 'Volatility 30 (1s) Index', dec: 3 },
+    { sym: '1HZ50V',   label: 'Volatility 50 (1s) Index', dec: 4 },
+    { sym: '1HZ75V',   label: 'Volatility 75 (1s) Index', dec: 4 },
+    { sym: '1HZ100V',  label: 'Volatility 100 (1s) Index',dec: 2 },
+    { sym: 'R_150',    label: 'Volatility 150 Index',   dec: 4 },
+    { sym: 'R_250',    label: 'Volatility 250 Index',   dec: 4 }
   ];
-  const assetLabel = sym => (ASSETS.find(a => a.sym === sym) || {}).label || sym;
 
-  let lookbackPeriod = 30;     // shared across all watched assets
-  let durationVal = '5_ticks';
-  let watchedSymbols = ['R_75']; // default starting watch
+  const APP_ID = '1089';
+  let ws = null;
+
+  // ---------------- State Management ----------------
+  let watchedSymbols = ['R_75', 'R_100', '1HZ75V'];
   let focusedSymbol = 'R_75';
 
-  // per-symbol state map
-  const state = {}; // sym -> { priceHistory, lastPrice, tickCounter, signalCls, signalText,
-                     //          pendingSignals, resolvedSignals, wins, losses }
+  let durationVal = '5_ticks';
+  let lookbackPeriod = 20; // 5 ticks -> 20 lookback
+
+  function durationToLookback(v) {
+    if (v === '5_ticks') return 20;
+    if (v === '10_ticks') return 40;
+    if (v === '1_min') return 90;
+    if (v === '5_min') return 260;
+    return 20;
+  }
+  
+  function durationToWaitTicks(v) {
+    if (v === '5_ticks') return 5;
+    if (v === '10_ticks') return 10;
+    if (v === '1_min') return 30; // ~1 tick per 2 sec avg
+    if (v === '5_min') return 150;
+    return 5;
+  }
+
+  let state = {};
 
   function freshState() {
     return {
-      priceHistory: [],
-      lastPrice: null,
+      ticks: [],         // array of numbers
       tickCounter: 0,
-      signalCls: 'neutral',
-      signalText: 'รอข้อมูล',
-      pendingSignals: [],
-      resolvedSignals: [],
-      wins: 0,
-      losses: 0
+      lastPrice: null,
+      prevPrice: null,
+      resistance: null,
+      support: null,
+      sigType: 'NEUTRAL', // BUY, SELL, BLOCK, NEUTRAL
+      sigText: 'กำลังวิเคราะห์โครงสร้างราคา…',
+      sigSub: 'รอข้อมูล tick เพื่อคำนวณกรอบราคา',
+      pendingContracts: [], // { id, dir, entryPrice, entryTick, resolveAtTick }
+      resolvedContracts: [], // { id, dir, entryPrice, exitPrice, result('WIN'|'LOSS'), resolvedAt }
+      statWins: 0,
+      statLosses: 0
     };
   }
 
   function ensureState(sym) {
-    if (!state[sym]) state[sym] = freshState();
-    return state[sym];
+    if (!state[sym]) {
+      state[sym] = freshState();
+    }
   }
 
-  function durationToTicks(durationValArg) {
-    if (durationValArg === "5_ticks") return 5;
-    if (durationValArg === "10_ticks") return 10;
-    if (durationValArg === "1_min") return 30;
-    if (durationValArg === "5_min") return 150;
-    return 5;
-  }
-  function durationToLookback(durationValArg) {
-    if (durationValArg === "5_ticks") return 20;
-    if (durationValArg === "10_ticks") return 40;
-    if (durationValArg === "1_min") return 90;
-    if (durationValArg === "5_min") return 300;
-    return 30;
-  }
-
-  const statusEl  = document.getElementById('api-status');
-  const connDot   = document.getElementById('conn-dot');
-  const logContainer = document.getElementById('log-container');
-  const durationSelect = document.getElementById('duration-select');
-
-  const watchlistPicker = document.getElementById('watchlist-picker');
+  // ---------------- UI Elements ----------------
+  const pickerContainer = document.getElementById('watchlist-picker');
+  const watchCountEl = document.getElementById('watch-count');
   const watchGrid = document.getElementById('watch-grid');
   const watchEmpty = document.getElementById('watch-empty');
-  const watchCountEl = document.getElementById('watch-count');
-  const combinedBanner = document.getElementById('combined-banner');
-  const cbWinrateEl = document.getElementById('cb-winrate');
-
   const focusSection = document.getElementById('focus-section');
-  const flNameEl = document.getElementById('fl-name');
-  const heroAssetEl = document.getElementById('hero-asset');
-  const priceEl   = document.getElementById('current-price');
-  const deltaEl   = document.getElementById('price-delta');
-  const resEl     = document.getElementById('res-price');
-  const supEl     = document.getElementById('sup-price');
-  const signalEl  = document.getElementById('signal-output');
-  const sigTextEl = document.getElementById('sig-text');
-  const sigSubEl  = document.getElementById('sig-sub');
-  const sparkLine = document.getElementById('spark-line');
-  const sparkFill = document.getElementById('spark-fill');
+  const durationSelect = document.getElementById('duration-select');
+  const logContainer = document.getElementById('log-container');
+  const connDot = document.getElementById('conn-dot');
+  const apiStatus = document.getElementById('api-status');
 
-  // ---------------- WebSocket ----------------
-  function connectWS() {
-    ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
-
-    ws.onopen = () => {
-      statusEl.textContent = "เชื่อมต่อสำเร็จ";
-      connDot.classList.add('live');
-      wsReady = true;
-      watchedSymbols.forEach(subscribeTicks);
-    };
-
-    ws.onmessage = (msg) => {
-      const data = JSON.parse(msg.data);
-      if (data.msg_type === 'tick') {
-        handleTick(data.tick);
+  // 🎵 ฟังก์ชันเสียงแจ้งเตือนไร้ไฟล์ (Web Audio API)
+  function playSignalSound(type) {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (type === 'HIGHER') {
+        playTone(audioCtx, 880, 0.1, 0);      // High Beep 1
+        playTone(audioCtx, 1318.51, 0.15, 0.12); // High Beep 2
+      } else if (type === 'LOWER') {
+        playTone(audioCtx, 440, 0.12, 0);     // Low Beep 1
+        playTone(audioCtx, 349.23, 0.2, 0.1);  // Low Beep 2
       }
-    };
-
-    ws.onclose = () => {
-      statusEl.textContent = "การเชื่อมต่อหลุด — กำลังลองใหม่";
-      connDot.classList.remove('live');
-      wsReady = false;
-      setTimeout(connectWS, 5000);
-    };
-
-    ws.onerror = () => {
-      statusEl.textContent = "เกิดข้อผิดพลาดการเชื่อมต่อ";
-      connDot.classList.remove('live');
-    };
-  }
-
-  function subscribeTicks(sym) {
-    if (wsReady && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ ticks: sym }));
+    } catch (e) {
+      console.log("Audio Alert Blocked By Browser Rules", e);
     }
   }
 
-  function unsubscribeSymbol(sym) {
-    // Deriv API doesn't give a clean per-symbol forget without the subscription id,
-    // so we simply stop processing ticks for unwatched symbols (handled in handleTick).
+  function playTone(ctx, freq, duration, delay) {
+    const osc = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gainNode.gain.setValueAtTime(0.15, ctx.currentTime + delay);
+    gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+    osc.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + duration);
   }
 
-  // ---------------- Tick handling ----------------
-  function handleTick(tick) {
-    const sym = tick.symbol;
-    if (!watchedSymbols.includes(sym)) return; // ignore ticks for unwatched assets
-
-    const s = ensureState(sym);
-    const price = parseFloat(tick.quote);
-
-    if (s.lastPrice !== null) {
-      s.prevPrice = s.lastPrice;
-      s.lastDelta = price - s.lastPrice;
-    }
-    s.lastPrice = price;
-
-    s.priceHistory.push(price);
-    if (s.priceHistory.length > lookbackPeriod) s.priceHistory.shift();
-
-    s.tickCounter++;
-    resolvePendingSignals(sym, price, s.tickCounter);
-    computeSignal(sym, price, s.tickCounter);
-
-    renderWatchCard(sym);
-    if (sym === focusedSymbol) renderFocused(sym);
-    renderCombinedBanner();
-  }
-
-  // ---------------- Signal computation (per symbol) ----------------
-  function computeSignal(sym, currentPrice, currentTick) {
-    const s = ensureState(sym);
-
-    if (s.priceHistory.length < lookbackPeriod) {
-      s.signalCls = 'neutral';
-      s.signalText = 'กำลังรวบรวมข้อมูล';
-      s.signalSub = `${s.priceHistory.length}/${lookbackPeriod} ticks`;
-      s.resistance = null; s.support = null;
-      return;
-    }
-
-    const resistance = Math.max(...s.priceHistory.slice(0, -3));
-    const support = Math.min(...s.priceHistory.slice(0, -3));
-    s.resistance = resistance; s.support = support;
-
-    const shortPeriod = Math.max(3, Math.floor(lookbackPeriod * 0.25));
-    const shortEMA = s.priceHistory.slice(-shortPeriod).reduce((a,b)=>a+b,0)/shortPeriod;
-    const longEMA = s.priceHistory.reduce((a,b)=>a+b,0)/lookbackPeriod;
-
-    let rawSignal = "HOLD";
-    if (shortEMA > longEMA) rawSignal = "BUY";
-    if (shortEMA < longEMA) rawSignal = "SELL";
-
-    const totalRange = resistance - support;
-    const distanceToRes = resistance - currentPrice;
-    const distanceToSup = currentPrice - support;
-    const thresholdZone = totalRange * 0.15;
-
-    const durationText = durationSelect.options[durationSelect.selectedIndex].text;
-    const aLabel = assetLabel(sym);
-    const waitTicks = durationToTicks(durationVal);
-
-    let newCls, newText, newSub, logMsg = null, registerDir = null;
-
-    if (rawSignal === "BUY") {
-      if (distanceToRes < thresholdZone) {
-        newCls = "block"; newText = "BLOCK — ใกล้แนวต้าน"; newSub = `ระยะห่างแนวต้านแคบ (${durationText})`;
-        logMsg = `⚠️ [${aLabel}] บล็อก BUY: ราคาใกล้ชนแนวต้าน`;
-      } else if (distanceToSup > (totalRange * 0.45) && distanceToRes > (totalRange * 0.45)) {
-        newCls = "block"; newText = "BLOCK — กลางกรอบ"; newSub = "ราคาลอยกลางกรอบ";
-        logMsg = `⏳ [${aLabel}] บล็อก BUY: ราคาลอยกลางกรอบไซด์เวย์`;
-      } else {
-        newCls = "buy"; newText = "HIGHER / CALL"; newSub = `${aLabel} · ${durationText}`;
-        logMsg = `🟢 [สัญญาณ BUY] ${aLabel} — แนะนำเปิด HIGHER (${durationText})`;
-        registerDir = "BUY";
-      }
-    } else if (rawSignal === "SELL") {
-      if (distanceToSup < thresholdZone) {
-        newCls = "block"; newText = "BLOCK — ใกล้แนวรับ"; newSub = `ระยะห่างแนวรับแคบ (${durationText})`;
-        logMsg = `⚠️ [${aLabel}] บล็อก SELL: ราคาใกล้ชนแนวรับ`;
-      } else if (distanceToSup > (totalRange * 0.45) && distanceToRes > (totalRange * 0.45)) {
-        newCls = "block"; newText = "BLOCK — กลางกรอบ"; newSub = "ราคาลอยกลางกรอบ";
-        logMsg = `⏳ [${aLabel}] บล็อก SELL: ราคาลอยกลางกรอบไซด์เวย์`;
-      } else {
-        newCls = "sell"; newText = "LOWER / PUT"; newSub = `${aLabel} · ${durationText}`;
-        logMsg = `🔴 [สัญญาณ SELL] ${aLabel} — แนะนำเปิด LOWER (${durationText})`;
-        registerDir = "SELL";
-      }
-    } else {
-      newCls = "neutral"; newText = "HOLD"; newSub = "ไม่มีทิศทางที่ชัดเจนพอ";
-    }
-
-    const isNewSignal = s.signalText !== newText;
-    s.signalCls = newCls;
-    s.signalText = newText;
-    s.signalSub = newSub;
-
-    if (isNewSignal) {
-      if (logMsg) addLog(logMsg);
-      if (registerDir) registerSignal(sym, registerDir, currentPrice, currentTick, waitTicks, aLabel);
-    }
-  }
-
-  // ---------------- Track record (per symbol) ----------------
-  function registerSignal(sym, direction, entryPrice, entryTick, waitTicks, label) {
-    const s = ensureState(sym);
-    s.pendingSignals.push({
-      direction, entryPrice, entryTick,
-      resolveAtTick: entryTick + waitTicks,
-      label
-    });
-  }
-
-  function resolvePendingSignals(sym, currentPrice, currentTick) {
-    const s = ensureState(sym);
-    if (s.pendingSignals.length === 0) return;
-    const stillPending = [];
-    for (const sig of s.pendingSignals) {
-      if (currentTick >= sig.resolveAtTick) {
-        const won = sig.direction === "BUY"
-          ? currentPrice > sig.entryPrice
-          : currentPrice < sig.entryPrice;
-        if (won) s.wins++; else s.losses++;
-        s.resolvedSignals.unshift({ ...sig, exitPrice: currentPrice, won, resolvedAt: new Date() });
-        if (s.resolvedSignals.length > 100) s.resolvedSignals.pop();
-      } else {
-        stillPending.push(sig);
-      }
-    }
-    s.pendingSignals = stillPending;
-  }
-
-  // ---------------- Sparkline (shared draw fn, accepts target svg parts) ----------------
-  function buildSparkPoints(priceHistory, W, H, PAD) {
-    if (priceHistory.length < 2) return { line: '', fill: '' };
-    const min = Math.min(...priceHistory);
-    const max = Math.max(...priceHistory);
-    const range = (max - min) || 1;
-    const n = priceHistory.length;
-    const pts = priceHistory.map((p, i) => {
-      const x = (i / (n - 1)) * W;
-      const y = H - PAD - ((p - min) / range) * (H - PAD * 2);
-      return [x, y];
-    });
-    const line = pts.map(p => p.join(',')).join(' ');
-    const fill = [[0, H], ...pts, [W, H]].map(p => p.join(',')).join(' ');
-    return { line, fill };
-  }
-
-  // ---------------- Watchlist picker (chips) ----------------
+  // ---------------- UI Rendering ----------------
   function renderPicker() {
-    watchlistPicker.innerHTML = ASSETS.map(a => {
-      const active = watchedSymbols.includes(a.sym);
-      return `<div class="chip ${active ? 'active' : ''}" data-sym="${a.sym}">${a.label}</div>`;
+    pickerContainer.innerHTML = ALL_SYMBOLS.map(item => {
+      const isAct = watchedSymbols.includes(item.sym) ? 'active' : '';
+      return `<div class="chip ${isAct}" data-sym="${item.sym}">${item.sym}</div>`;
     }).join('');
-
-    watchlistPicker.querySelectorAll('.chip').forEach(chip => {
-      chip.addEventListener('click', () => toggleWatch(chip.dataset.sym));
-    });
-  }
-
-  function toggleWatch(sym) {
-    if (watchedSymbols.includes(sym)) {
-      if (watchedSymbols.length === 1) return; // keep at least one watched
-      watchedSymbols = watchedSymbols.filter(s => s !== sym);
-      if (focusedSymbol === sym) {
-        focusedSymbol = watchedSymbols[0];
-      }
-    } else {
-      watchedSymbols.push(sym);
-      ensureState(sym);
-      subscribeTicks(sym);
-    }
-    renderPicker();
-    renderWatchGrid();
-    renderCombinedBanner();
-    if (watchedSymbols.includes(focusedSymbol)) {
-      renderFocused(focusedSymbol);
-    }
-  }
-
-  // ---------------- Watch grid (cards) ----------------
-  function renderWatchGrid() {
     watchCountEl.textContent = `${watchedSymbols.length} รายการ`;
 
+    pickerContainer.querySelectorAll('.chip').forEach(el => {
+      el.addEventListener('click', () => {
+        const sym = el.getAttribute('data-sym');
+        if (watchedSymbols.includes(sym)) {
+          if (watchedSymbols.length > 1) {
+            watchedSymbols = watchedSymbols.filter(s => s !== sym);
+            if (focusedSymbol === sym) {
+              focusedSymbol = watchedSymbols[0];
+            }
+            unsubscribeSymbol(sym);
+          }
+        } else {
+          watchedSymbols.push(sym);
+          focusedSymbol = sym;
+          ensureState(sym);
+          subscribeSymbol(sym);
+        }
+        renderPicker();
+        renderWatchGrid();
+        renderFocused(focusedSymbol);
+        renderCombinedWinRate();
+      });
+    });
+  }
+
+  function renderWatchGrid() {
     if (watchedSymbols.length === 0) {
       watchEmpty.style.display = 'block';
-      focusSection.style.display = 'none';
+      watchGrid.innerHTML = '';
       return;
     }
     watchEmpty.style.display = 'none';
 
-    // build cards if missing
-    watchedSymbols.forEach(sym => {
-      let card = document.getElementById(`wc-${sym}`);
-      if (!card) {
-        card = document.createElement('div');
-        card.className = 'watch-card';
-        card.id = `wc-${sym}`;
-        card.innerHTML = `
-          <div class="wc-top">
-            <span class="wc-name">${assetLabel(sym)}</span>
-            <span class="wc-badge neutral" id="wc-badge-${sym}">—</span>
-          </div>
-          <div class="wc-mid">
-            <span class="wc-price" id="wc-price-${sym}">0.00</span>
-            <div class="wc-spark-wrap">
-              <svg viewBox="0 0 200 28" preserveAspectRatio="none">
-                <polyline id="wc-spark-${sym}" fill="none" stroke="#5eead4" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
-              </svg>
-            </div>
-          </div>
-          <div class="wc-bottom">
-            <span class="wc-wr">Win Rate <span class="wc-wr-val" id="wc-wr-${sym}">—</span></span>
-            <span id="wc-record-${sym}">0W / 0L</span>
-          </div>
-        `;
-        card.addEventListener('click', () => focusAsset(sym));
-        watchGrid.appendChild(card);
+    watchGrid.innerHTML = watchedSymbols.map(sym => {
+      const s = state[sym];
+      const meta = ALL_SYMBOLS.find(i => i.sym === sym);
+      if (!s) return '';
+
+      const priceStr = s.lastPrice ? s.lastPrice.toFixed(meta.dec) : '—.——';
+      
+      let badgeCls = 'neutral';
+      if (s.sigType === 'BUY') badgeCls = 'buy';
+      if (s.sigType === 'SELL') badgeCls = 'sell';
+      if (s.sigType === 'BLOCK') badgeCls = 'block';
+
+      const total = s.statWins + s.statLosses;
+      const wrStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
+      const wrCls = total > 0 ? ( (s.statWins/total) >= 0.5 ? 'good' : 'bad' ) : '';
+
+      const focusedCls = focusedSymbol === sym ? 'focused' : '';
+
+      // Sparkline points calculation
+      let polylineHtml = '';
+      if (s.ticks.length >= 2) {
+        const min = Math.min(...s.ticks);
+        const max = Math.max(...s.ticks);
+        const range = max - min;
+        const pts = s.ticks.map((t, idx) => {
+          const x = (idx / (s.ticks.length - 1)) * 120;
+          const y = range === 0 ? 14 : 26 - ((t - min) / range) * 24;
+          return `${x.toFixed(1)},${y.toFixed(1)}`;
+        }).join(' ');
+        polylineHtml = `<polyline fill="none" stroke="var(--ink)" stroke-width="1.2" points="${pts}"></polyline>`;
       }
-      card.classList.toggle('focused', sym === focusedSymbol);
-      renderWatchCard(sym);
+
+      return `<div class="watch-card ${focusedCls}" data-sym="${sym}">
+        <div class="wc-top">
+          <span class="wc-name">${meta.label}</span>
+          <span class="wc-badge ${badgeCls}">${s.sigType}</span>
+        </div>
+        <div class="wc-mid">
+          <span class="wc-price">${priceStr}</span>
+          <div class="wc-spark-wrap">
+            <svg viewBox="0 0 120 28" preserveAspectRatio="none">${polylineHtml}</svg>
+          </div>
+        </div>
+        <div class="wc-bottom">
+          <div class="wc-wr">Win Rate: <span class="wc-wr-val ${wrCls}">${wrStr}</span></div>
+          <div>คิวรอผล: ${s.pendingContracts.length}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    watchGrid.querySelectorAll('.watch-card').forEach(card => {
+      card.addEventListener('click', () => {
+        focusedSymbol = card.getAttribute('data-sym');
+        watchGrid.querySelectorAll('.watch-card').forEach(c => c.classList.remove('focused'));
+        card.classList.add('focused');
+        renderFocused(focusedSymbol);
+      });
     });
-
-    // remove cards for unwatched symbols
-    Array.from(watchGrid.children).forEach(child => {
-      if (!child.id || !child.id.startsWith('wc-')) return;
-      const sym = child.id.replace('wc-', '');
-      if (!watchedSymbols.includes(sym)) child.remove();
-    });
-
-    if (watchedSymbols.length > 0) {
-      focusSection.style.display = 'block';
-    }
-  }
-
-  function renderWatchCard(sym) {
-    const s = ensureState(sym);
-    const priceEl2 = document.getElementById(`wc-price-${sym}`);
-    if (!priceEl2) return; // card not built yet
-
-    priceEl2.textContent = s.lastPrice !== null ? s.lastPrice.toFixed(2) : '0.00';
-
-    const badge = document.getElementById(`wc-badge-${sym}`);
-    badge.className = `wc-badge ${s.signalCls}`;
-    badge.textContent = s.signalCls === 'neutral' ? '—'
-      : s.signalCls === 'buy' ? 'CALL'
-      : s.signalCls === 'sell' ? 'PUT'
-      : 'BLOCK';
-
-    const sparkEl = document.getElementById(`wc-spark-${sym}`);
-    const { line } = buildSparkPoints(s.priceHistory, 200, 28, 2);
-    sparkEl.setAttribute('points', line);
-
-    const total = s.wins + s.losses;
-    const wrEl = document.getElementById(`wc-wr-${sym}`);
-    if (total > 0) {
-      const wr = (s.wins / total) * 100;
-      wrEl.textContent = `${wr.toFixed(0)}%`;
-      wrEl.className = `wc-wr-val ${wr >= 50 ? 'good' : 'bad'}`;
-    } else {
-      wrEl.textContent = '—';
-      wrEl.className = 'wc-wr-val';
-    }
-    document.getElementById(`wc-record-${sym}`).textContent = `${s.wins}W / ${s.losses}L`;
-  }
-
-  function renderCombinedBanner() {
-    let totalW = 0, totalL = 0;
-    watchedSymbols.forEach(sym => {
-      const s = ensureState(sym);
-      totalW += s.wins; totalL += s.losses;
-    });
-    const total = totalW + totalL;
-
-    if (watchedSymbols.length < 2) {
-      combinedBanner.style.display = 'none';
-      return;
-    }
-    combinedBanner.style.display = 'flex';
-    cbWinrateEl.textContent = total > 0
-      ? `${((totalW/total)*100).toFixed(1)}% (${totalW}W / ${totalL}L จาก ${watchedSymbols.length} สินทรัพย์)`
-      : `รอผลลัพธ์แรก จาก ${watchedSymbols.length} สินทรัพย์`;
-  }
-
-  // ---------------- Focused detail view ----------------
-  function focusAsset(sym) {
-    focusedSymbol = sym;
-    renderWatchGrid();
-    renderFocused(sym);
   }
 
   function renderFocused(sym) {
-    const s = ensureState(sym);
-    flNameEl.textContent = assetLabel(sym);
-    heroAssetEl.textContent = assetLabel(sym);
-
-    const decimals = 2;
-    priceEl.textContent = s.lastPrice !== null ? s.lastPrice.toFixed(decimals) : '0.00';
-
-    if (s.lastDelta !== undefined && s.prevPrice) {
-      const diff = s.lastDelta;
-      const pct = (diff / s.prevPrice) * 100;
-      if (diff > 0) {
-        deltaEl.className = 'price-delta up';
-        deltaEl.textContent = `▲ ${pct.toFixed(3)}%`;
-      } else if (diff < 0) {
-        deltaEl.className = 'price-delta down';
-        deltaEl.textContent = `▼ ${Math.abs(pct).toFixed(3)}%`;
-      } else {
-        deltaEl.className = 'price-delta flat';
-        deltaEl.textContent = `0.000%`;
-      }
-    } else {
-      deltaEl.className = 'price-delta flat';
-      deltaEl.textContent = `0.000%`;
-    }
-
-    const { line, fill } = buildSparkPoints(s.priceHistory, 600, 64, 4);
-    sparkLine.setAttribute('points', line);
-    sparkFill.setAttribute('points', fill);
-
-    resEl.textContent = s.resistance !== null && s.resistance !== undefined ? s.resistance.toFixed(2) : '0.00';
-    supEl.textContent = s.support !== null && s.support !== undefined ? s.support.toFixed(2) : '0.00';
-
-    signalEl.className = `signal ${s.signalCls}`;
-    sigTextEl.textContent = s.signalText;
-    sigSubEl.textContent = s.signalSub || '';
-
-    renderTrackRecord(sym);
-  }
-
-  function renderTrackRecord(sym) {
-    const s = ensureState(sym);
-    const total = s.wins + s.losses;
-    const winRate = total > 0 ? (s.wins / total) * 100 : null;
-
-    document.getElementById('track-count').textContent = `${total} สัญญาณ`;
-    document.getElementById('ts-winrate').textContent = winRate !== null ? `${winRate.toFixed(1)}%` : '—';
-    document.getElementById('ts-wins').textContent = s.wins;
-    document.getElementById('ts-losses').textContent = s.losses;
-    document.getElementById('ts-pending').textContent = s.pendingSignals.length;
-    document.getElementById('tb-fill').style.width = winRate !== null ? `${winRate}%` : '0%';
-
-    const listEl = document.getElementById('track-list');
-    if (s.resolvedSignals.length === 0) {
-      listEl.innerHTML = '<li class="empty">ยังไม่มีสัญญาณที่ได้ผลลัพธ์</li>';
+    const s = state[sym];
+    const meta = ALL_SYMBOLS.find(i => i.sym === sym);
+    if (!s) {
+      focusSection.style.display = 'none';
       return;
     }
-    listEl.innerHTML = s.resolvedSignals.slice(0, 20).map(r => {
-      const dirCls = r.direction === "BUY" ? "buy" : "sell";
-      const dirLabel = r.direction === "BUY" ? "CALL" : "PUT";
-      const resCls = r.won ? "win" : "loss";
-      const resSym = r.won ? "✓" : "✕";
-      const time = r.resolvedAt.toLocaleTimeString('th-TH', { hour12: false });
-      return `<li>
-        <span class="tl-result ${resCls}">${resSym}</span>
-        <span class="tl-dir ${dirCls}">${dirLabel}</span>
-        <span class="tl-prices">${r.entryPrice.toFixed(2)} → ${r.exitPrice.toFixed(2)}</span>
-        <span class="tl-time">${time}</span>
-      </li>`;
-    }).join('');
+    focusSection.style.display = 'block';
+
+    document.getElementById('fl-name').textContent = meta.label;
+    document.getElementById('hero-asset').textContent = sym;
+
+    // Prices
+    const priceEl = document.getElementById('current-price');
+    const deltaEl = document.getElementById('price-delta');
+    
+    if (s.lastPrice !== null) {
+      priceEl.textContent = s.lastPrice.toFixed(meta.dec);
+      if (s.prevPrice !== null && s.lastPrice !== s.prevPrice) {
+        const diff = s.lastPrice - s.prevPrice;
+        const pct = (diff / s.prevPrice) * 100;
+        deltaEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(3) + '%';
+        deltaEl.className = `price-delta ${pct > 0 ? 'up' : 'down'}`;
+      }
+    } else {
+      priceEl.textContent = '0.00';
+      deltaEl.textContent = '0.000%';
+      deltaEl.className = 'price-delta flat';
+    }
+
+    document.getElementById('res-price').textContent = s.resistance ? s.resistance.toFixed(meta.dec) : '0.00';
+    document.getElementById('sup-price').textContent = s.support ? s.support.toFixed(meta.dec) : '0.00';
+
+    // Signal panel UI
+    const sigPanel = document.getElementById('signal-output');
+    const sigTxt = document.getElementById('sig-text');
+    const sigSb = document.getElementById('sig-sub');
+    
+    sigPanel.className = `signal ${s.sigType.toLowerCase()}`;
+    sigTxt.textContent = s.sigText;
+    sigSb.textContent = s.sigSub;
+
+    // Big Sparkline
+    const polyline = document.getElementById('spark-line');
+    const polygon = document.getElementById('spark-fill');
+    if (s.ticks.length >= 2) {
+      const min = Math.min(...s.ticks);
+      const max = Math.max(...s.ticks);
+      const spread = max - min;
+      const pts = s.ticks.map((t, idx) => {
+        const x = (idx / (s.ticks.length - 1)) * 600;
+        const y = spread === 0 ? 32 : 58 - ((t - min) / spread) * 52;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      });
+      const linePts = pts.join(' ');
+      polyline.setAttribute('points', linePts);
+      polygon.setAttribute('points', `0,64 ${linePts} 600,64`);
+    } else {
+      polyline.setAttribute('points', '');
+      polygon.setAttribute('points', '');
+    }
+
+    // Track Record Details
+    const total = s.statWins + s.statLosses;
+    const wrRateStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
+    
+    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} สัญญาณ`;
+    document.getElementById('ts-winrate').textContent = wrRateStr;
+    document.getElementById('ts-wins').textContent = s.statWins;
+    document.getElementById('ts-losses').textContent = s.statLosses;
+    document.getElementById('ts-pending').textContent = s.pendingContracts.length;
+    document.getElementById('tb-fill').style.width = total > 0 ? `${(s.statWins / total) * 100}%` : '0%';
+
+    const listContainer = document.getElementById('track-list');
+    if (s.resolvedContracts.length === 0) {
+      listContainer.innerHTML = '<li class="empty">ยังไม่มีสัญญาณที่ได้ผลลัพธ์ในเซสชันนี้</li>';
+    } else {
+      listContainer.innerHTML = s.resolvedContracts.slice(0, 30).map(r => {
+        const resCls = r.result.toLowerCase();
+        const resSym = r.result === 'WIN' ? 'W' : 'L';
+        const dirCls = r.dir.toLowerCase() === 'higher' ? 'buy' : 'sell';
+        const dirLabel = r.dir === 'HIGHER' ? 'CALL' : 'PUT';
+        const time = r.resolvedAt.toLocaleTimeString('th-TH', { hour12: false });
+        return `<li>
+          <span class="tl-result ${resCls}">${resSym}</span>
+          <span class="tl-dir ${dirCls}">${dirLabel}</span>
+          <span class="tl-prices">${r.entryPrice.toFixed(meta.dec)} → ${r.exitPrice.toFixed(meta.dec)}</span>
+          <span class="tl-time">${time}</span>
+        </li>`;
+      }).join('');
+    }
+  }
+
+  function renderCombinedWinRate() {
+    const banner = document.getElementById('combined-banner');
+    const winrateEl = document.getElementById('cb-winrate');
+    
+    let totalWins = 0;
+    let totalLosses = 0;
+
+    watchedSymbols.forEach(sym => {
+      const s = state[sym];
+      if (s) {
+        totalWins += s.statWins;
+        totalLosses += s.statLosses;
+      }
+    });
+
+    const grandTotal = totalWins + totalLosses;
+    if (grandTotal > 0) {
+      banner.style.display = 'flex';
+      winrateEl.textContent = ((totalWins / grandTotal) * 100).toFixed(1) + '%';
+    } else {
+      banner.style.display = 'none';
+    }
   }
 
   // ---------------- Log ----------------
@@ -1257,10 +1087,200 @@
     addLog(`⏰ เปลี่ยนเวลาหมดอายุสัญญาออปชันเป็น: ${durationSelect.options[durationSelect.selectedIndex].text} (รีเซ็ตทุกสินทรัพย์)`);
   });
 
+  // ---------------- Stream Engine (WebSocket) ----------------
+  function connectWS() {
+    if (ws) {
+      try { ws.close(); } catch(e){}
+    }
+    ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
+
+    ws.onopen = () => {
+      connDot.className = 'dot live';
+      apiStatus.textContent = 'LIVE';
+      addLog('📡 เชื่อมต่อเครือข่ายเซิร์ฟเวอร์ Deriv สำเร็จ');
+      
+      // Subscribe all watched symbols
+      watchedSymbols.forEach(sym => subscribeSymbol(sym));
+    };
+
+    ws.onmessage = (msg) => {
+      const data = JSON.parse(msg.data);
+      if (data.msg_type === 'tick') {
+        onTickReceived(data.tick);
+      }
+    };
+
+    ws.onclose = () => {
+      connDot.className = 'dot';
+      apiStatus.textContent = 'กำลังเชื่อมต่อ…';
+      setTimeout(connectWS, 4000);
+    };
+  }
+
+  function subscribeSymbol(sym) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ ticks: sym }));
+    }
+  }
+
+  function unsubscribeSymbol(sym) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ forget: sym })); // standard format or let server clean on re-open
+    }
+  }
+
+  // ---------------- Core Algorithm Engine ----------------
+  function onTickReceived(tick) {
+    const sym = tick.symbol;
+    if (!watchedSymbols.includes(sym)) return;
+
+    ensureState(sym);
+    const s = state[sym];
+    const price = parseFloat(tick.quote);
+
+    s.tickCounter++;
+    s.prevPrice = s.lastPrice;
+    s.lastPrice = price;
+    s.ticks.push(price);
+
+    if (s.ticks.length > lookbackPeriod) {
+      s.ticks.shift();
+    }
+
+    // Resolve contracts awaiting results
+    evaluatePendingContracts(sym, price, s.tickCounter);
+
+    // Compute structure signals
+    if (s.ticks.length >= 10) {
+      s.resistance = Math.max(...s.ticks.slice(0, -2));
+      s.support = Math.min(...s.ticks.slice(0, -2));
+
+      // Fast vs Slow average tracking
+      const shortSize = Math.max(3, Math.floor(lookbackPeriod * 0.25));
+      const shortAvg = s.ticks.slice(-shortSize).reduce((a,b)=>a+b,0) / shortSize;
+      const longAvg = s.ticks.reduce((a,b)=>a+b,0) / s.ticks.length;
+
+      const totalRange = s.resistance - s.support;
+      const thresholdZone = totalRange * 0.15; // 15% Edge protection walls
+      
+      const midMin = s.support + (totalRange * 0.45);
+      const midMax = s.support + (totalRange * 0.55);
+
+      let bias = 'HOLD';
+      if (shortAvg > longAvg) bias = 'UP';
+      if (shortAvg < longAvg) bias = 'DOWN';
+
+      const prevSigType = s.sigType; // บันทึกสถานะก่อนหน้าเพื่อเช็กเสียงเตือน
+
+      if (bias === 'UP') {
+        if ((s.resistance - price) < thresholdZone) {
+          s.sigType = 'BLOCK';
+          s.sigText = 'BLOCK: NEAR RESISTANCE';
+          s.sigSub = '⚠️ ระงับสัญญาณซื้อ: ราคาวิ่งเข้าใกล้กรอบกำแพงแนวต้านหลัก';
+        } else if (price > midMin && price < midMax) {
+          s.sigType = 'BLOCK';
+          s.sigText = 'BLOCK: MID-ZONE';
+          s.sigSub = '⏳ ระงับสัญญาณ: พิกัดราคาลอยอยู่กึ่งกลางโครงสร้างไซด์เวย์';
+        } else {
+          s.sigType = 'BUY';
+          s.sigText = 'HIGHER / CALL';
+          s.sigSub = '🟢 สัญญาณซื้อเปิดทำงาน: ทิศทางได้เปรียบ พื้นที่ด้านบนกว้าง';
+          
+          // สัญญาณเพิ่งเปลี่ยนเป็น BUY ครั้งแรก -> ส่งเสียงเตือนและจำลองสัญญา
+          if (prevSigType !== 'BUY') {
+            playSignalSound('HIGHER'); 
+            dispatchVirtualContract(sym, 'HIGHER', price, s.tickCounter);
+          }
+        }
+      } else if (bias === 'DOWN') {
+        if ((price - s.support) < thresholdZone) {
+          s.sigType = 'BLOCK';
+          s.sigText = 'BLOCK: NEAR SUPPORT';
+          s.sigSub = '⚠️ ระงับสัญญาณขาย: ราคาทิ้งตัวลงมาลึกใกล้แนวรับกำแพงล่าง';
+        } else if (price > midMin && price < midMax) {
+          s.sigType = 'BLOCK';
+          s.sigText = 'BLOCK: MID-ZONE';
+          s.sigSub = '⏳ ระงับสัญญาณ: ราคาแกว่งตัวกึ่งกลางทางกรอบโครงสร้าง';
+        } else {
+          s.sigType = 'SELL';
+          s.sigText = 'LOWER / PUT';
+          s.sigSub = '🔴 สัญญาณขายเปิดทำงาน: โครงสร้างราคาหักหัวลง พื้นที่ล่างเปิดโล่ง';
+          
+          // สัญญาณเพิ่งเปลี่ยนเป็น SELL ครั้งแรก -> ส่งเสียงเตือนและจำลองสัญญา
+          if (prevSigType !== 'SELL') {
+            playSignalSound('LOWER');
+            dispatchVirtualContract(sym, 'LOWER', price, s.tickCounter);
+          }
+        }
+      } else {
+        s.sigType = 'NEUTRAL';
+        s.sigText = 'กำลังวิเคราะห์โครงสร้างราคา…';
+        s.sigSub = 'รอแรงเหวี่ยงของแท่งราคาเพื่อประมวลผลทิศทาง';
+      }
+    }
+
+    // Refresh display
+    renderWatchGrid();
+    if (sym === focusedSymbol) {
+      renderFocused(focusedSymbol);
+    }
+    renderCombinedWinRate();
+  }
+
+  // ---------------- Virtual Contract Operations ----------------
+  function dispatchVirtualContract(sym, dir, entryPrice, currentTickNum) {
+    const s = state[sym];
+    const waitTicks = durationToWaitTicks(durationVal);
+    const meta = ALL_SYMBOLS.find(i => i.sym === sym);
+
+    const contract = {
+      id: 'ID-' + Math.floor(Math.random() * 89999 + 10000),
+      dir: dir,
+      entryPrice: entryPrice,
+      entryTick: currentTickNum,
+      resolveAtTick: currentTickNum + waitTicks
+    };
+
+    s.pendingContracts.push(contract);
+    addLog(`🎯 [${sym}] ออกสัญญาณ ${dir === 'HIGHER' ? 'CALL 🟢' : 'PUT 🔴'} ที่ราคา ${entryPrice.toFixed(meta.dec)} (รอผลอีก ${waitTicks} Ticks)`);
+  }
+
+  function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
+    const s = state[sym];
+    if (!s.pendingContracts.length) return;
+
+    const meta = ALL_SYMBOLS.find(i => i.sym === sym);
+    const toResolve = s.pendingContracts.filter(c => currentTickNum >= c.resolveAtTick);
+    
+    // Keep un-resolved ones
+    s.pendingContracts = s.pendingContracts.filter(c => currentTickNum < c.resolveAtTick);
+
+    toResolve.forEach(c => {
+      let result = 'LOSS';
+      if (c.dir === 'HIGHER' && currentPrice > c.entryPrice) result = 'WIN';
+      if (c.dir === 'LOWER' && currentPrice < c.entryPrice) result = 'WIN';
+
+      if (result === 'WIN') s.statWins++; else s.statLosses++;
+
+      const resLog = result === 'WIN' ? '✅ ถูกทาง' : '❌ ผิดทาง';
+      addLog(`🏁 สรุปผล [${sym}]: สัญญา ${c.id} จบดีล -> ${resLog} (เข้า: ${c.entryPrice.toFixed(meta.dec)} → จบ: ${currentPrice.toFixed(meta.dec)})`);
+
+      s.resolvedContracts.unshift({
+        id: c.id,
+        dir: c.dir,
+        entryPrice: c.entryPrice,
+        exitPrice: currentPrice,
+        result: result,
+        resolvedAt: new Date()
+      });
+    });
+  }
+
   // ---------------- Init ----------------
   ensureState(focusedSymbol);
   renderPicker();
   renderWatchGrid();
+  renderFocused(focusedSymbol); // เรียกแสดงผล UI หลักทันทีตั้งแต่หน้าเว็บโหลด
   connectWS();
 </script>
 
