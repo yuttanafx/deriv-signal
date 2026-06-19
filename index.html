@@ -84,7 +84,6 @@
     gap: 16px;
   }
 
-  /* ปุ่มพระอาทิตย์ / พระจันทร์ */
   .theme-toggle-btn {
     background: var(--panel);
     border: 1px solid var(--line);
@@ -265,7 +264,7 @@
     border-radius:9px;
   }
 
-  /* ---------- Focused detail (existing hero) ---------- */
+  /* ---------- Focused detail ---------- */
   .focus-label{
     display:flex;
     align-items:center;
@@ -375,9 +374,14 @@
   .sr-cell.sup .sr-label::before{ background:var(--buy); }
   .sr-cell .sr-val{ font-size:18px; font-weight:600; color:var(--ink-bright); }
 
-  /* ---------- Duration control ---------- */
+  /* ---------- Controls Box ---------- */
   .controls{
     margin-bottom:14px;
+  }
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
   }
   .field{ display:flex; flex-direction:column; gap:6px; }
   .field label{
@@ -457,7 +461,7 @@
   }
   .signal.block .sig-text{ color:var(--block); font-size:16px; }
 
-  /* ---------- Track record (focused asset) ---------- */
+  /* ---------- Track record ---------- */
   .track-panel{
     border:1px solid var(--line);
     border-radius:10px;
@@ -691,14 +695,26 @@
     </div>
 
     <div class="controls">
-      <div class="field">
-        <label for="duration-select">ระยะเวลาสัญญา (ใช้ร่วมกันทุกสินทรัพย์)</label>
-        <select id="duration-select">
-          <option value="5_ticks">5 Ticks</option>
-          <option value="10_ticks">10 Ticks</option>
-          <option value="1_min">1 นาที</option>
-          <option value="5_min">5 นาที</option>
-        </select>
+      <div class="controls-grid">
+        <div class="field">
+          <label for="duration-select">ระยะเวลาสัญญา (Expiry Duration)</label>
+          <select id="duration-select">
+            <option value="5_ticks">5 Ticks</option>
+            <option value="10_ticks">10 Ticks</option>
+            <option value="1_min">1 นาที</option>
+            <option value="5_min">5 นาที</option>
+          </select>
+        </div>
+        
+        <div class="field">
+          <label for="max-steps-select">จำนวนไม้สูงสุด (Martingale Layer Limit)</label>
+          <select id="max-steps-select">
+            <option value="3">สูงสุด 3 ไม้ (เสี่ยงต่ำ)</option>
+            <option value="5" selected>สูงสุด 5 ไม้ (มาตรฐาน)</option>
+            <option value="7">สูงสุด 7 ไม้ (ทุนหนา)</option>
+            <option value="10">สูงสุด 10 ไม้ (เต็มระบบ)</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -815,6 +831,7 @@
 
   let durationVal = '5_ticks';
   let lookbackPeriod = 20;
+  let allowedMaxSteps = 5; // ตัวแปรล็อกสเตปทบไม้สูงสุดจากฝั่งดรอปดาวน์
 
   function durationToLookback(v) {
     if (v === '5_ticks') return 20;
@@ -848,7 +865,8 @@
       pendingContracts: [],
       resolvedContracts: [],
       statWins: 0,
-      statLosses: 0
+      statLosses: 0,
+      currentStepCount: 0 // บันทึกสเตปไม้ทบปัจจุบันแยกเฉพาะของแต่ละเหรียญ
     };
   }
 
@@ -865,29 +883,35 @@
   const watchEmpty = document.getElementById('watch-empty');
   const focusSection = document.getElementById('focus-section');
   const durationSelect = document.getElementById('duration-select');
+  const maxStepsSelect = document.getElementById('max-steps-select');
   const logContainer = document.getElementById('log-container');
   const connDot = document.getElementById('conn-dot');
   const apiStatus = document.getElementById('api-status');
   const themeToggleBtn = document.getElementById('theme-toggle');
 
-  // 🌓 ระบบสลับโหมด มืด / สว่าง (Theme Switcher)
+  // 🌓 ระบบสลับโหมด มืด / สว่าง
   themeToggleBtn.addEventListener('click', () => {
     const currentTheme = document.documentElement.getAttribute('data-theme');
     if (currentTheme === 'light') {
       document.documentElement.removeAttribute('data-theme');
       themeToggleBtn.textContent = '🌙';
-      addLog('🌓 เปลี่ยนหน้าจอเป็น: โหมดมืด (Dark Mode)');
+      addLog('🌓 เปลี่ยนระบบหน้าจอเป็น: โหมดมืด (Dark Mode)');
     } else {
       document.documentElement.setAttribute('data-theme', 'light');
       themeToggleBtn.textContent = '☀️';
-      addLog('🌓 เปลี่ยนหน้าจอเป็น: โหมดสว่าง (Light Mode)');
+      addLog('🌓 เปลี่ยนระบบหน้าจอเป็น: โหมดสว่าง (Light Mode)');
     }
-    // สั่งวาดเส้นกราฟใหม่เพื่อเปลี่ยนโทนสีตามธีม
     renderWatchGrid();
     renderFocused(focusedSymbol);
   });
 
-  // 🎵 ฟังก์ชันเสียงแจ้งเตือนไร้ไฟล์ (Web Audio API)
+  // 🛡️ ดักจับการเปลี่ยนขีดจำกัดสเตปทบไม้สูงสุด
+  maxStepsSelect.addEventListener('change', (e) => {
+    allowedMaxSteps = parseInt(e.target.value);
+    addLog(`🛡️ ล็อกเพดานความปลอดภัยมาติงเกลสูงสุดเป็น: ไม่เกิน ${allowedMaxSteps} ไม้`);
+  });
+
+  // 🎵 ฟังก์ชันกำเนิดคลื่นเสียงแจ้งเตือนความถี่แบบไร้ไฟล์เสียงภายนอก
   function playSignalSound(type) {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -957,7 +981,6 @@
     }
     watchEmpty.style.display = 'none';
 
-    // เช็กธีมเพื่อกำหนดสีเส้นกราฟย่อย
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const strokeColor = isLight ? '#4b5563' : '#c8cfdc';
 
@@ -1005,7 +1028,7 @@
         </div>
         <div class="wc-bottom">
           <div class="wc-wr">Win Rate: <span class="wc-wr-val ${wrCls}">${wrStr}</span></div>
-          <div>คิวรอผล: ${s.pendingContracts.length}</div>
+          <div>คิวรอผล: ${s.pendingContracts.length} (ไม้ทบ: ${s.currentStepCount})</div>
         </div>
       </div>`;
     }).join('');
@@ -1060,7 +1083,6 @@
     sigTxt.textContent = s.sigText;
     sigSb.textContent = s.sigSub;
 
-    // เช็กธีมเพื่อกำหนดสีของเส้นกราฟใหญ่ (Big Sparkline)
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const mainStrokeColor = isLight ? 'var(--accent)' : '#5eead4';
     const polyline = document.getElementById('spark-line');
@@ -1088,7 +1110,7 @@
     const total = s.statWins + s.statLosses;
     const wrRateStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
     
-    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} สัญญาณ`;
+    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} สัญญาณ (ไม้ทบปัจจุบัน: ${s.currentStepCount}/${allowedMaxSteps})`;
     document.getElementById('ts-winrate').textContent = wrRateStr;
     document.getElementById('ts-wins').textContent = s.statWins;
     document.getElementById('ts-losses').textContent = s.statLosses;
@@ -1109,7 +1131,7 @@
           <span class="tl-result ${resCls}">${resSym}</span>
           <span class="tl-dir ${dirCls}">${dirLabel}</span>
           <span class="tl-prices">${r.entryPrice.toFixed(meta.dec)} → ${r.exitPrice.toFixed(meta.dec)}</span>
-          <span class="tl-time">${time}</span>
+          <span class="tl-time">${time} (ไม้ทบ M-${r.step})</span>
         </li>`;
       }).join('');
     }
@@ -1204,7 +1226,7 @@
     }
   }
 
-  // ---------------- Core Algorithm Engine ----------------
+  // ---------------- Core Algorithm Engine (MTF + Breakout) ----------------
   function onTickReceived(tick) {
     const sym = tick.symbol;
     if (!watchedSymbols.includes(sym)) return;
@@ -1222,70 +1244,61 @@
       s.ticks.shift();
     }
 
+    // เคลียร์และคำนวณผลสัญญาเพื่อคุมเงินทุนมาติงเกล
     evaluatePendingContracts(sym, price, s.tickCounter);
 
-    if (s.ticks.length >= 10) {
+    if (s.ticks.length >= 15) {
+      // 1. ตีเส้นกรอบราคาแนวรับแนวต้านแบบไดนามิกจากข้อมูลย้อนหลัง
       s.resistance = Math.max(...s.ticks.slice(0, -2));
       s.support = Math.min(...s.ticks.slice(0, -2));
 
-      const shortSize = Math.max(3, Math.floor(lookbackPeriod * 0.25));
-      const shortAvg = s.ticks.slice(-shortSize).reduce((a,b)=>a+b,0) / shortSize;
-      const longAvg = s.ticks.reduce((a,b)=>a+b,0) / s.ticks.length;
+      // 2. 🌐 ลอจิกจำลองมัลติไทม์เฟรม (Higher Timeframe Trend Mode)
+      const largePeriod = s.ticks.length;
+      const shortPeriod = 4;
+      const mtfMainTrend = s.ticks.reduce((a,b)=>a+b,0) / largePeriod; 
+      const currentMomentum = s.ticks.slice(-shortPeriod).reduce((a,b)=>a+b,0) / shortPeriod; 
 
+      let majorBias = 'SIDEWAYS';
+      if (currentMomentum > mtfMainTrend) majorBias = 'BULLISH';
+      if (currentMomentum < mtfMainTrend) majorBias = 'BEARISH';
+
+      // 3. จัดสรรพิกัดกรอบสะสมพลังและคำนวณโซนป้องกัน
       const totalRange = s.resistance - s.support;
-      const thresholdZone = totalRange * 0.15;
-      
-      const midMin = s.support + (totalRange * 0.45);
-      const midMax = s.support + (totalRange * 0.55);
-
-      let bias = 'HOLD';
-      if (shortAvg > longAvg) bias = 'UP';
-      if (shortAvg < longAvg) bias = 'DOWN';
+      const midMin = s.support + (totalRange * 0.35);
+      const midMax = s.support + (totalRange * 0.65);
 
       const prevSigType = s.sigType;
 
-      if (bias === 'UP') {
-        if ((s.resistance - price) < thresholdZone) {
-          s.sigType = 'BLOCK';
-          s.sigText = 'BLOCK: NEAR RESISTANCE';
-          s.sigSub = '⚠️ ระงับสัญญาณซื้อ: ราคาวิ่งเข้าใกล้กรอบกำแพงแนวต้านหลัก';
-        } else if (price > midMin && price < midMax) {
-          s.sigType = 'BLOCK';
-          s.sigText = 'BLOCK: MID-ZONE';
-          s.sigSub = '⏳ ระงับสัญญาณ: พิกัดราคาลอยอยู่กึ่งกลางโครงสร้างไซด์เวย์';
-        } else {
-          s.sigType = 'BUY';
-          s.sigText = 'HIGHER / CALL';
-          s.sigSub = '🟢 สัญญาณซื้อเปิดทำงาน: ทิศทางได้เปรียบ พื้นที่ด้านบนกว้าง';
-          
-          if (prevSigType !== 'BUY') {
-            playSignalSound('HIGHER'); 
-            dispatchVirtualContract(sym, 'HIGHER', price, s.tickCounter);
-          }
+      // 4. 🛡️ ขบวนการกรองพื้นที่ราคาเปิดออปชันเฉพาะตอนเกิด Breakout เท่านั้น
+      if (price > midMin && price < midMax) {
+        s.sigType = 'BLOCK';
+        s.sigText = 'COMPRESSION: MID-ZONE';
+        s.sigSub = `⏳ ตลาดบีบอัดตัวแคบ รอราคาเลือกฝั่งระเบิดเบรคเอาท์ (เทรนใหญ่: ${majorBias})`;
+      } 
+      else if (price >= s.resistance && majorBias === 'BULLISH') {
+        s.sigType = 'BUY';
+        s.sigText = 'BREAKOUT: HIGHER';
+        s.sigSub = '🟢 สัญญาณเบรคเอาท์ขาขึ้นทำงาน: ทะลุกำแพงแนวต้านสำเร็จเปิดสัญญา CALL';
+        
+        if (prevSigType !== 'BUY') {
+          playSignalSound('HIGHER'); 
+          dispatchVirtualContract(sym, 'HIGHER', price, s.tickCounter);
         }
-      } else if (bias === 'DOWN') {
-        if ((price - s.support) < thresholdZone) {
-          s.sigType = 'BLOCK';
-          s.sigText = 'BLOCK: NEAR SUPPORT';
-          s.sigSub = '⚠️ ระงับสัญญาณขาย: ราคาทิ้งตัวลงมาลึกใกล้แนวรับกำแพงล่าง';
-        } else if (price > midMin && price < midMax) {
-          s.sigType = 'BLOCK';
-          s.sigText = 'BLOCK: MID-ZONE';
-          s.sigSub = '⏳ ระงับสัญญาณ: ราคาแกว่งตัวกึ่งกลางทางกรอบโครงสร้าง';
-        } else {
-          s.sigType = 'SELL';
-          s.sigText = 'LOWER / PUT';
-          s.sigSub = '🔴 สัญญาณขายเปิดทำงาน: โครงสร้างราคาหักหัวลง พื้นที่ล่างเปิดโล่ง';
-          
-          if (prevSigType !== 'SELL') {
-            playSignalSound('LOWER');
-            dispatchVirtualContract(sym, 'LOWER', price, s.tickCounter);
-          }
+      } 
+      else if (price <= s.support && majorBias === 'BEARISH') {
+        s.sigType = 'SELL';
+        s.sigText = 'BREAKOUT: LOWER';
+        s.sigSub = '🔴 สัญญาณเบรคเอาท์ขาลงทำงาน: หลุดกำแพงแนวรับด้านล่างเปิดสัญญา PUT';
+        
+        if (prevSigType !== 'SELL') {
+          playSignalSound('LOWER');
+          dispatchVirtualContract(sym, 'LOWER', price, s.tickCounter);
         }
-      } else {
-        s.sigType = 'NEUTRAL';
-        s.sigText = 'กำลังวิเคราะห์โครงสร้างราคา…';
-        s.sigSub = 'รอแรงเหวี่ยงของแท่งราคาเพื่อประมวลผลทิศทาง';
+      } 
+      else {
+        s.sigType = 'BLOCK';
+        s.sigText = 'BLOCK: UNSTABLE BREAK';
+        s.sigSub = '⚠️ ระงับสัญญาณ: ราคาออกนอกกรอบพักตัวแต่ทิศทางมัลติไทม์เฟรมยังขัดแย้งกัน';
       }
     }
 
@@ -1296,22 +1309,27 @@
     renderCombinedWinRate();
   }
 
-  // ---------------- Virtual Contract Operations ----------------
+  // ---------------- Virtual Contract Operations (With Martingale Control) ----------------
   function dispatchVirtualContract(sym, dir, entryPrice, currentTickNum) {
     const s = state[sym];
     const waitTicks = durationToWaitTicks(durationVal);
     const meta = ALL_SYMBOLS.find(i => i.sym === sym);
+
+    // จำลองเงินทุนทบไม้ ณ สเตปนั้นๆ (ไม้แรกคูณ 1, ไม้สองคูณ 2, ไม้สามคูณ 4...)
+    const simulatedStake = 1.0 * Math.pow(2, s.currentStepCount);
 
     const contract = {
       id: 'ID-' + Math.floor(Math.random() * 89999 + 10000),
       dir: dir,
       entryPrice: entryPrice,
       entryTick: currentTickNum,
-      resolveAtTick: currentTickNum + waitTicks
+      resolveAtTick: currentTickNum + waitTicks,
+      step: s.currentStepCount + 1, // บันทึกว่าสัญญาออกที่ไม้ไหน
+      stakeValue: simulatedStake
     };
 
     s.pendingContracts.push(contract);
-    addLog(`🎯 [${sym}] ออกสัญญาณ ${dir === 'HIGHER' ? 'CALL 🟢' : 'PUT 🔴'} ที่ราคา ${entryPrice.toFixed(meta.dec)} (รอผลอีก ${waitTicks} Ticks)`);
+    addLog(`🎯 [${sym}] ยิงซิกแนล ${dir === 'HIGHER' ? 'CALL 🟢' : 'PUT 🔴'} ไม้ที่ ${contract.step} [จำลองทุน $${simulatedStake}] (รอผล ${waitTicks} Ticks)`);
   }
 
   function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
@@ -1328,10 +1346,27 @@
       if (c.dir === 'HIGHER' && currentPrice > c.entryPrice) result = 'WIN';
       if (c.dir === 'LOWER' && currentPrice < c.entryPrice) result = 'WIN';
 
-      if (result === 'WIN') s.statWins++; else s.statLosses++;
-
-      const resLog = result === 'WIN' ? '✅ ถูกทาง' : '❌ ผิดทาง';
-      addLog(`🏁 สรุปผล [${sym}]: สัญญา ${c.id} จบดีล -> ${resLog} (เข้า: ${c.entryPrice.toFixed(meta.dec)} → จบ: ${currentPrice.toFixed(meta.dec)})`);
+      if (result === 'WIN') {
+        s.statWins++;
+        const logWinMsg = `🎉 ดีลชนะ [${sym}] สัญญา ${c.id}: ไม้สำเร็จที่ ${c.step}! สั่งรีเซ็ตสเตปเงินทุนกลับไปไม้ 1`;
+        addLog(logWinMsg);
+        
+        s.currentStepCount = 0; // 🔄 ชนะแล้ว -> รีเซ็ตกลับไปไม้ 1 เสมอ
+      } else {
+        s.statLosses++;
+        s.currentStepCount++; // 🔄 แพ้ -> ขยับพูนตัวคูณไปสเตปถัดไป
+        
+        // 🚨 🛡️ ระบบล็อกไม้ความปลอดภัย (Martingale Layer Protection)
+        if (s.currentStepCount >= allowedMaxSteps) {
+          const logCutMsg = `🛑 [STOP LOSS PERMIT] ดีลแพ้ [${sym}]: สัญญา ${c.id} ทบเงินติดต่อกันชนเพดานจำกัดที่ตั้งไว้ (${allowedMaxSteps} ไม้) บ็อตสั่งบังคับ "ตัดขาดทุน (Cut Loss)" และรีเซ็ตกลับไม้ 1 ทันทีเพื่อรักษาความปลอดภัยพอร์ตหลัก!`;
+          addLog(logCutMsg);
+          
+          s.currentStepCount = 0; // บังคับล้างไม้ ไม่ให้ทบจมลงลึกจนพอร์ตระเบิด
+        } else {
+          const logLossMsg = `❌ ดีลแพ้ [${sym}] สัญญา ${c.id}: ผิดทางที่ไม้ ${c.step}! ปรับสเตปเตรียบมาติงเกลทบทุนในไม้ถัดไป (ไม้ที่ ${s.currentStepCount + 1})`;
+          addLog(logLossMsg);
+        }
+      }
 
       s.resolvedContracts.unshift({
         id: c.id,
@@ -1339,6 +1374,7 @@
         entryPrice: c.entryPrice,
         exitPrice: currentPrice,
         result: result,
+        step: c.step,
         resolvedAt: new Date()
       });
     });
@@ -1348,7 +1384,7 @@
   ensureState(focusedSymbol);
   renderPicker();
   renderWatchGrid();
-  renderFocused(focusedSymbol);
+  renderFocused(focusedSymbol); // สั่งวาด UI โครงสร้างหน้าจอมารอทันที
   connectWS();
 </script>
 
