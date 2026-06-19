@@ -132,7 +132,7 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 14px 16px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
   .api-grid {
     display: flex;
@@ -178,6 +178,39 @@
     border-color: var(--buy);
     color: var(--buy);
   }
+
+  /* ---------- 💰 แผงสถิติการเงินจำลอง (Virtual Wallet Panel) ---------- */
+  .wallet-panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .wallet-card-item {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .wallet-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+  }
+  .wallet-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ink-bright);
+    font-variant-numeric: tabular-nums;
+  }
+  .wallet-value.plus { color: var(--buy); }
+  .wallet-value.minus { color: var(--sell); }
 
   /* ---------- Section labels ---------- */
   .section-label{
@@ -737,6 +770,18 @@
     </div>
   </div>
 
+  <p class="section-label">กระเป๋าเงินจำลองสำหรับรันทดสอบ (Virtual Wallet Stats)</p>
+  <div class="wallet-panel-grid">
+    <div class="wallet-card-item">
+      <span class="wallet-label">Virtual Net Balance</span>
+      <div class="wallet-value" id="v-balance-val">$1,000.00</div>
+    </div>
+    <div class="wallet-card-item">
+      <span class="wallet-label">Total Session PnL</span>
+      <div class="wallet-value" id="v-pnl-val">$0.00 (0.00%)</div>
+    </div>
+  </div>
+
   <p class="section-label">เลือกสินทรัพย์ที่ติดตาม <small id="watch-count">0 รายการ</small></p>
   <div class="watchlist-picker" id="watchlist-picker"></div>
 
@@ -889,7 +934,12 @@
   const APP_ID = '1089';
   let ws = null;
   let isAuthorized = false;
-  let currentTokenValue = ''; // ดึงค่าไดนามิกจากหน้าแดชบอร์ด
+  let currentTokenValue = ''; 
+
+  // ---------------- 💰 บัญชีเงินสดจำลองสำหรับการทดสอบระบบ ----------------
+  const INITIAL_V_BALANCE = 1000.00; // ทุนตั้งต้น $1,000
+  let virtualBalance = INITIAL_V_BALANCE;
+  const V_PAYOUT_RATE = 0.90;        // อัตราจ่ายออปชันจำลอง 90%
 
   // ---------------- Global Martingale & Safety Execution State ----------------
   let baseStake = 1.0;             
@@ -959,9 +1009,11 @@
   const apiStatus = document.getElementById('api-status');
   const themeToggleBtn = document.getElementById('theme-toggle');
   
-  // Elements ของระบบดึง Token หน้าบอร์ด
   const apiTokenInput = document.getElementById('api-token-input');
   const apiConnectBtn = document.getElementById('api-connect-btn');
+  
+  const vBalanceValEl = document.getElementById('v-balance-val');
+  const vPnlValEl = document.getElementById('v-pnl-val');
 
   // 🌓 ระบบสลับธีม มืด/สว่าง
   themeToggleBtn.addEventListener('click', () => {
@@ -1002,11 +1054,9 @@
     }
     
     currentTokenValue = enteredToken;
-    localStorage.setItem('deriv_api_token', currentTokenValue); // บันทึกเข้า LocalStorage เพื่อจำสิทธิ์สล๊อตไว้
-    
+    localStorage.setItem('deriv_api_token', currentTokenValue); 
     addLog('🔗 กำลังส่งสิทธิ์ยืนยันตัวตน Token ชุดใหม่ไปยังเซิร์ฟเวอร์ Deriv...');
     
-    // หาก Socket เชื่อมค้างอยู่ ให้ยิงคำสั่งเปิดพอร์ตทันที
     if (ws && ws.readyState === WebSocket.OPEN) {
       isAuthorized = false;
       ws.send(JSON.stringify({ authorize: currentTokenValue }));
@@ -1014,6 +1064,22 @@
       connectWS();
     }
   });
+
+  // 💰 ฟังก์ชันอัปเดตแผงการเงินจำลองหน้าแดชบอร์ด
+  function updateVirtualWalletUI() {
+    vBalanceValEl.textContent = `$${virtualBalance.toFixed(2)}`;
+    const netPnL = virtualBalance - INITIAL_V_BALANCE;
+    const pctPnL = (netPnL / INITIAL_V_BALANCE) * 100;
+    
+    vPnlValEl.textContent = `${netPnL >= 0 ? '+' : ''}$${netPnL.toFixed(2)} (${netPnL >= 0 ? '+' : ''}${pctPnL.toFixed(2)}%)`;
+    if (netPnL > 0) {
+      vPnlValEl.className = "wallet-value plus";
+    } else if (netPnL < 0) {
+      vPnlValEl.className = "wallet-value minus";
+    } else {
+      vPnlValEl.className = "wallet-value";
+    }
+  }
 
   // 🎵 ฟังก์ชันสัญญาณเสียงแจ้งเตือนความถี่เรียลไทม์
   function playSignalSound(type) {
@@ -1221,6 +1287,7 @@
     document.getElementById('ts-wins').textContent = s.statWins;
     document.getElementById('ts-losses').textContent = s.statLosses;
     document.getElementById('ts-pending').textContent = s.pendingContracts.length;
+    document.getElementById('track-bar').style.display = total > 0 ? 'block' : 'none';
     document.getElementById('tb-fill').style.width = total > 0 ? `${(s.statWins / total) * 100}%` : '0%';
 
     const listContainer = document.getElementById('track-list');
@@ -1237,7 +1304,7 @@
           <span class="tl-result ${resCls}">${resSym}</span>
           <span class="tl-dir ${dirCls}">${dirLabel}</span>
           <span class="tl-prices">${r.entryPrice.toFixed(meta.dec)} → ${r.exitPrice.toFixed(meta.dec)}</span>
-          <span class="tl-time">${time} (ไม้ทบรวม: M-${r.step} ทุน: $${r.stake})</span>
+          <span class="tl-time">${time} (ไม้ร่วม: M-${r.step} ทุน: $${r.stake})</span>
         </li>`;
       }).join('');
     }
@@ -1306,13 +1373,12 @@
       apiStatus.textContent = 'CONNECTING…';
       addLog('📡 ลิงก์เครือข่ายพื้นฐาน WebSocket เปิดใช้งานสำเร็จ กำลังรอตรวจสอบสิทธิ์ Token...');
       
-      // ส่งคำสั่งใช้ Token หากหน้าบอร์ดมีข้อมูลจำค่าไว้จากอดีต
       if (currentTokenValue) {
         ws.send(JSON.stringify({ authorize: currentTokenValue }));
       } else {
         connDot.className = 'dot live';
         apiStatus.textContent = 'LIVE (VIRTUAL MODE)';
-        addLog('⚠️ สังเกต: หน้าจอหลักยังไม่เปิดรับ Token บัญชีจริง ระบบรันในโหมดจำลองคำนวณเสียงแจ้งเตือน');
+        addLog('⚠️ สังเกต: หน้าจอหลักยังไม่เปิดรับ Token บัญชีจริง ระบบรันในโหมดจำลองคำนวณเงินสดและเสียงเตือน');
       }
 
       watchedSymbols.forEach(sym => subscribeSymbol(sym));
@@ -1321,7 +1387,6 @@
     ws.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       
-      // การตอบกลับเมื่อยืนยันพอร์ตจริงผ่าน
       if (data.msg_type === 'authorize') {
         if (!data.error) {
           isAuthorized = true;
@@ -1330,7 +1395,7 @@
           apiConnectBtn.className = 'api-btn success-active';
           apiConnectBtn.textContent = 'Connected ✅';
           
-          addLog(`🎉 บัญชีจริงเชื่อมต่อสำเร็จ! ชื่อสิทธิ์: ${data.authorize.email} | ยอดคงเหลือ: ${data.authorize.balance} ${data.authorize.currency}`);
+          addLog(`🎉 บัญชีจริงเชื่อมต่อสำเร็จ! ชื่อสิทธิ์: ${data.authorize.email} | ยอดคงเหลือพอร์ตจริง: ${data.authorize.balance} ${data.authorize.currency}`);
         } else {
           isAuthorized = false;
           apiConnectBtn.className = 'api-btn';
@@ -1339,7 +1404,6 @@
         }
       }
 
-      // การตอบกลับสถานะการส่งคำสั่งซื้อจริง
       if (data.msg_type === 'buy') {
         if (!data.error) {
           addLog(`📦 [REAL ORDER ACCEPTED] ส่งคำสั่งซื้อสำเร็จเข้าตลาดจริง! ID สัญญาออปชัน: ${data.buy.contract_id}`);
@@ -1489,7 +1553,7 @@
     
     addLog(`🎯 [EXECUTE SIGN] คัดกรองคู่เงิน ${sym} ออกสัญญา ${dir === 'HIGHER' ? 'CALL 🟢' : 'PUT 🔴'} ไม้ทบรวมศูนย์สเตป M-${contract.step} [ขนาดทุน $${globalCurrentStake.toFixed(2)}]`);
 
-    // 🚀 สั่งเปิดคำสั่งยิงไปที่ตลาดจริงเมื่อสิทธิ์การยืนยัน API Token ผ่านเรียบร้อยแล้ว
+    // ยิงออเดอร์ของจริงเข้าเซิร์ฟเวอร์ Deriv เมื่อยืนยันสิทธิ์ API Token ผ่านเรียบร้อย
     if (isAuthorized && ws && ws.readyState === WebSocket.OPEN) {
       const contractType = dir === 'HIGHER' ? 'CALL' : 'PUT';
       ws.send(JSON.stringify({
@@ -1524,14 +1588,22 @@
 
       if (result === 'WIN') {
         s.statWins++;
-        addLog(`🎉 ดีลจบชนะ [${sym}]: ไม้เทรดสำเร็จสะสมกำไรคืนที่สเตปไม้ M-${c.step}! [รีเซ็ตระบบแชร์มาติงเกลรวมศูนย์กลับไม้ 1]`);
+        
+        // 💰 คิดบัญชีจำลองขาชนะ: คืนทุน + ได้กำไรกลับมาตามอัตรา Payout 90%
+        const profitGained = c.stakeValue * V_PAYOUT_RATE;
+        virtualBalance += profitGained;
+
+        addLog(`🎉 ดีลจบชนะ [${sym}]: ไม้สำเร็จเคลียร์กำไรคืน (+$${profitGained.toFixed(2)}) ที่รอบไม้ M-${c.step}! [รีเซ็ตกระเป๋าแชร์กลับไม้ 1]`);
         globalCurrentStep = 0;
         globalCurrentStake = baseStake;
       } else {
         s.statLosses++;
         
+        // 💰 คิดบัญชีจำลองขาแพ้: เงินสดหายไปเต็มจำนวนตามขนาด Stake ในไม้นั้น
+        virtualBalance -= c.stakeValue;
+
         if (allowedMaxSteps === 0) {
-          addLog(`❌ ดีลจบแพ้ [${sym}]: เสียไม้รูปแบบปกติ (ระบบปิดทบไม้) สแตนบายไม้ 1 คงที่ต่อออเดอร์ถัดไป`);
+          addLog(`❌ ดีลจบแพ้ [${sym}]: เสียไม้รูปแบบปกติ (-$${c.stakeValue.toFixed(2)}) สแตนบายไม้ 1 คงที่ต่อออเดอร์ถัดไป`);
           globalCurrentStep = 0;
           globalCurrentStake = baseStake;
         } else {
@@ -1542,12 +1614,13 @@
             globalCurrentStep = 0;
             globalCurrentStake = baseStake;
           } else {
-            addLog(`❌ ดีลจบแพ้ [${sym}]: โมเดลมาร์ติงเกลรวมศูนย์ทำการทวีคูณขนาดความไวเพิ่มทุนไปไม้ถัดไปที่ M-${globalCurrentStep + 1}`);
+            addLog(`❌ ดีลจบแพ้ [${sym}]: หักทุน (-$${c.stakeValue.toFixed(2)})! โมเดลมาร์ติงเกลรวมศูนย์ทำการทวีคูณขนาดเพิ่มทุนไปไม้ถัดไปที่ M-${globalCurrentStep + 1}`);
           }
         }
       }
 
       globalIsPositionOpen = false; // คลายล็อกคานเพื่อเปิดรับสัญญาณชุดใหม่
+      updateVirtualWalletUI();       // เรนเดอร์อัปเดตยอดเงินในกระเป๋าจำลองสดๆ บนแผงควบคุมหลัก
 
       s.resolvedContracts.unshift({
         id: c.id,
@@ -1574,6 +1647,7 @@
   renderPicker();
   renderWatchGrid();
   renderFocused(focusedSymbol);
+  updateVirtualWalletUI(); // เรนเดอร์ยอดเงินเริ่มต้นก้อนแรกโชว์ทันทีเมื่อโหลดเสร็จ
   connectWS();
 </script>
 
