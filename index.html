@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terravolteco — Market Structure Terminal (Fixed Duration & Precision)</title>
+<title>Terravolteco — Market Structure Terminal (Throttle Fix)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -566,7 +566,7 @@
   function durationToWaitTicks(v) {
     if (v === '5_ticks') return 5;
     if (v === '10_ticks') return 10;
-    if (v === '5_min') return 150; // แปลงเวลาโดยประมาณสำหรับกระบวนการตรวจสอบผลลัพธ์ภายใน
+    if (v === '5_min') return 150; 
     if (v === '15_min') return 450;
     return 5;
   }
@@ -645,7 +645,7 @@
     if(confirm('ต้องการรีเซ็ตประวัติและค่า Win Rate ในเซสชันนี้ใช่ไหมครับ?')) {
       watchedSymbols.forEach(sym => { state[sym] = freshState(); });
       renderWatchGrid(); renderFocused(focusedSymbol); renderCombinedWinRate();
-      addLog(`🧹 ล้างสถิติประวัติดีลบนเทอร์มินอลเรียบร้อยแล้ว`);
+      addLog('🧹 ล้างสถิติประวัติดีลบนเทอร์มินอลเรียบร้อยแล้ว');
     }
   });
 
@@ -699,10 +699,14 @@
     ensureState(symbol);
     const s = state[symbol];
     
+    // 🛑 🛡️ LOCK LOGIC: ถ้ายังมีออเดอร์ของคู่เงินนี้ค้างคาอยู่ระบบห้ามเปิดไม้ซ้ำเด็ดขาด!
+    if (s.pendingContracts.length > 0) {
+      return; 
+    }
+
     const currentStake = parseFloat((baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2));
     const contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
 
-    // จัดเตรียมพารามิเตอร์เวลาให้สอดคล้องกับข้อกำหนด API ของ Deriv
     let durationNumber = 5;
     let durationUnitStr = 't';
 
@@ -753,10 +757,11 @@
       entryTick: s.tickCounter,
       resolveAtTick: s.tickCounter + calculatedWaitTicks,
       step: s.currentStepCount + 1,
-      stakeValue: currentStake,
+      stakeValue: currentStake, // แก้ไขการผูกค่าสวมข้อมูลให้ตรงกัน
       apiTracked: false
     };
     s.pendingContracts.push(apiContract);
+    addLog(`🎯 [${symbol}] ตรวจพบเบรคเอาท์! ส่งคำสั่งยิงออเดอร์ ไม้ M-${apiContract.step} (ขนาดทุน: $${currentStake})`);
   }
 
   function renderPicker() {
@@ -892,12 +897,11 @@
         const resCls = r.result.toLowerCase(); const resSym = r.result === 'WIN' ? 'W' : 'L';
         const dirCls = r.dir.toLowerCase() === 'higher' ? 'buy' : 'sell'; const dirLabel = r.dir === 'HIGHER' ? 'CALL' : 'PUT';
         const time = r.resolvedAt.toLocaleTimeString('th-TH', { hour12: false });
-        // 🛠️ แก้ไขตรงจุดนี้เพื่อดึง meta.dec ของแต่ละสินทรัพย์มาคุมจุดทศนิยมแทนค่า Fix ครับ
         return `<li>
           <span class="tl-result ${resCls}">${resSym}</span>
           <span class="tl-dir ${dirCls}">${dirLabel}</span>
           <span class="tl-prices">${r.entryPrice.toFixed(meta.dec)} → ${r.exitPrice.toFixed(meta.dec)}</span>
-          <span class="tl-time">${time} (ไม้ M-${r.step} | ขนาด $${r.stakeValue})</span>
+          <span class="tl-time">${time} (ไม้ M-${r.step} | ขนาด $${r.stakeValue.toFixed(2)})</span>
         </li>`;
       }).join('');
     }
@@ -943,7 +947,7 @@
       if (data.msg_type === 'authorize') {
         if(data.error) {
           isAuthorized = false; alert(`การยืนยันสิทธิ์ Token ล้มเหลว: ${data.error.message}`);
-          addLog(`❌ ปฏิเสธการต่อพอร์ต: กรุณาตรวจสอบรหัสสิทธิ์และโหมดพอร์ตพาสเวิร์ด`);
+          addLog('❌ ปฏิเสธการต่อพอร์ต: กรุณาตรวจสอบรหัสสิทธิ์และโหมดพอร์ตพาสเวิร์ด');
         } else {
           isAuthorized = true;
           apiTokenInput.style.display = 'none'; accountModeSelect.style.display = 'none'; apiConnectBtn.style.display = 'none';
@@ -967,9 +971,12 @@
       if (data.msg_type === 'buy') {
         if(data.error) {
           addLog(`🚨 [API ERROR] เซิร์ฟเวอร์ปฏิเสธดีล: ${data.error.message}`);
+          // หากยิงไม่ผ่านจริง ให้ถอนตั๋วออกจากคิวเพื่อปลดล็อกคู่เงิน
+          const sym = focusedSymbol; // คาดการณ์จากตัวปัจจุบัน
+          if(state[sym]) state[sym].pendingContracts = [];
         } else {
           const buyInfo = data.buy;
-          addLog(`📦 [API ORDER ACCEPTED] ออกคำสั่งซื้อสำเร็จ! เลขที่ดีล: ${buyInfo.contract_id} (จำนวนทุน: $${buyInfo.price})`);
+          addLog(`📦 [API ORDER ACCEPTED] ออกคำสั่งซื้อสำเร็จ! เลขที่ดีล: ${buyInfo.contract_id} (จำนวนทุน: $${buyInfo.price.toFixed(2)})`);
           
           watchedSymbols.forEach(sym => {
             ensureState(sym);
@@ -1059,6 +1066,7 @@
 
   function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
     const s = state[sym]; if (!s.pendingContracts.length) return;
+    const meta = ALL_SYMBOLS.find(i => i.sym === sym);
     
     const toResolve = s.pendingContracts.filter(c => currentTickNum >= c.resolveAtTick);
     s.pendingContracts = s.pendingContracts.filter(c => currentTickNum < c.resolveAtTick);
