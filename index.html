@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terravolteco — Market Structure Terminal (Demo/Real API & Multipliers)</title>
+<title>Terravolteco — Market Structure Terminal (Fixed Duration & Precision)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ---------- สีสำหรับโหมดมืด (Dark Mode - Default) ---------- */
   :root {
     --bg:        #0a0c11;
     --panel:     #11141c;
@@ -24,7 +23,6 @@
     --sans: 'Inter', sans-serif;
   }
 
-  /* ---------- สีสำหรับโหมดสว่าง (Light Mode) ---------- */
   [data-theme="light"] {
     --bg:        #f3f4f6;
     --panel:     #ffffff;
@@ -53,7 +51,6 @@
 
   .wrap{ max-width:780px; margin:0 auto; }
 
-  /* ---------- Header ---------- */
   header{
     display:flex;
     justify-content:space-between;
@@ -124,7 +121,6 @@
     50%{ opacity:.45; }
   }
 
-  /* ---------- API Connection Panel ---------- */
   .api-panel {
     background: var(--panel);
     border: 1px solid var(--line);
@@ -199,7 +195,6 @@
   .badge-mode.real { background: rgba(16, 185, 129, 0.15); color: var(--buy); border: 1px solid var(--buy); }
   .balance-val { color: var(--buy); font-weight: 700; }
 
-  /* ---------- Section labels ---------- */
   .section-label{
     font-family:var(--mono);
     font-size:10px;
@@ -212,7 +207,6 @@
     justify-content:space-between;
   }
 
-  /* ---------- Watchlist picker ---------- */
   .watchlist-picker{
     display:flex;
     flex-wrap:wrap;
@@ -236,7 +230,6 @@
     background:rgba(94,234,212,0.08);
   }
 
-  /* ---------- Watchlist grid ---------- */
   .watch-grid{
     display:grid;
     grid-template-columns:1fr;
@@ -267,7 +260,6 @@
   .wc-wr-val.bad{ color:var(--sell); font-weight:600; }
   .watch-empty{ text-align:center; padding:30px 16px; color:var(--ink-dim); font-size:13px; border:1px dashed var(--line); border-radius:9px; }
 
-  /* ---------- Focused detail ---------- */
   .focus-label{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
   .focus-label .fl-tag{ font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); }
   .focus-label .fl-name{ font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:600; }
@@ -296,14 +288,12 @@
   .sr-cell.sup .sr-label::before{ background:var(--buy); }
   .sr-cell .sr-val{ font-size:18px; font-weight:600; color:var(--ink-bright); }
 
-  /* ---------- Controls Box ---------- */
   .controls{ margin-bottom:14px; }
   .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .field{ display:flex; flex-direction:column; gap:6px; }
   .field label{ font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); }
   select{ appearance:none; background:var(--panel); color:var(--ink-bright); border:1px solid var(--line); padding:11px 36px 11px 12px; border-radius:6px; font-family:var(--mono); font-size:13px; outline:none; width:100%; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7384' stroke-width='1.4' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
 
-  /* ---------- Signal panel ---------- */
   .signal{ border:1px solid var(--line); border-radius:10px; padding:20px; text-align:center; margin-bottom:14px; }
   .signal .sig-eyebrow{ font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:8px; }
   .signal .sig-text{ font-family:var(--mono); font-size:21px; font-weight:700; }
@@ -317,7 +307,6 @@
   .signal.block{ background:rgba(251,191,36,0.06); border-color:rgba(251,191,36,0.35); }
   .signal.block .sig-text{ color:var(--block); font-size:16px; }
 
-  /* ---------- Track record ---------- */
   .track-panel{ border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; background:var(--panel); }
   .track-head{ display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:14px; }
   .track-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
@@ -423,10 +412,10 @@
         <div class="field">
           <label for="duration-select">ระยะเวลาสัญญา (Expiry Duration)</label>
           <select id="duration-select">
-            <option value="5_ticks">5 Ticks</option>
+            <option value="5_ticks" selected>5 Ticks (แนะนำความไวสูงสุด)</option>
             <option value="10_ticks">10 Ticks</option>
-            <option value="1_min">1 นาที</option>
-            <option value="5_min">5 นาที</option>
+            <option value="5_min">5 นาที (ขั้นต่ำสุดของรูปแบบนาที API)</option>
+            <option value="15_min">15 นาที</option>
           </select>
         </div>
         <div class="field">
@@ -536,7 +525,6 @@
 </div>
 
 <script>
-  // ---------------- Configuration & Catalog ----------------
   const ALL_SYMBOLS = [
     { sym: 'R_10',     label: 'Volatility 10 Index',    dec: 3 },
     { sym: 'R_25',     label: 'Volatility 25 Index',    dec: 3 },
@@ -560,27 +548,26 @@
   let accountMode = 'demo'; 
   let baseStake = 1.0; 
 
-  // ---------------- State Management ----------------
   let watchedSymbols = ['R_75', 'R_100', '1HZ75V'];
   let focusedSymbol = 'R_75';
   let durationVal = '5_ticks';
   let lookbackPeriod = 20;
   let allowedMaxSteps = 5;
-  let martingaleMultiplier = 2.0; // ค่าตัวคูณมาติงเกลเริ่มต้นแบบ Global
+  let martingaleMultiplier = 2.0; 
 
   function durationToLookback(v) {
     if (v === '5_ticks') return 20;
     if (v === '10_ticks') return 40;
-    if (v === '1_min') return 90;
     if (v === '5_min') return 260;
+    if (v === '15_min') return 700;
     return 20;
   }
   
   function durationToWaitTicks(v) {
     if (v === '5_ticks') return 5;
     if (v === '10_ticks') return 10;
-    if (v === '1_min') return 30;
-    if (v === '5_min') return 150;
+    if (v === '5_min') return 150; // แปลงเวลาโดยประมาณสำหรับกระบวนการตรวจสอบผลลัพธ์ภายใน
+    if (v === '15_min') return 450;
     return 5;
   }
 
@@ -609,7 +596,6 @@
     if (!state[sym]) state[sym] = freshState();
   }
 
-  // ---------------- UI Elements ----------------
   const pickerContainer = document.getElementById('watchlist-picker');
   const watchCountEl = document.getElementById('watch-count');
   const watchGrid = document.getElementById('watch-grid');
@@ -632,7 +618,6 @@
   const accBalance = document.getElementById('acc-balance');
   const clearApiBtn = document.getElementById('clear-api-btn');
 
-  // สลับธีม มืด / สว่าง
   themeToggleBtn.addEventListener('click', () => {
     if (document.documentElement.getAttribute('data-theme') === 'light') {
       document.documentElement.removeAttribute('data-theme');
@@ -650,7 +635,6 @@
     addLog(`🛡️ ปรับขีดจำกัดเพดานทบไม้สูงสุดเป็น: ไม่เกิน ${allowedMaxSteps} ไม้`);
   });
 
-  // ลอจิกจับความเปลี่ยนแปลงของตัวคูณมาติงเกล
   martingaleMultiplierSelect.addEventListener('change', (e) => {
     martingaleMultiplier = parseFloat(e.target.value);
     addLog(`📈 ปรับสเกลตัวคูณทบเงินมาติงเกลใหม่เมื่อแพ้เป็น: x${martingaleMultiplier}`);
@@ -665,7 +649,6 @@
     }
   });
 
-  // ระบบเสียงแจ้งเตือน
   function playSignalSound(type) {
     try {
       const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -689,7 +672,6 @@
     osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + duration);
   }
 
-  // ---------------- API Actions & Handlers ----------------
   apiConnectBtn.addEventListener('click', () => {
     const token = apiTokenInput.value.trim();
     if(!token) { alert('กรุณากรอก API Token เพื่อระบุสิทธิ์พอร์ตก่อนครับ'); return; }
@@ -713,24 +695,33 @@
     }
   }
 
-  // ---------------- Contract Execution (Dynamic Multipliers Formulas) ----------------
   function executeRealContract(symbol, direction) {
     ensureState(symbol);
     const s = state[symbol];
-    const waitTicks = durationToWaitTicks(durationVal);
-
-    // คำนวณเงินทุนด้วยสูตรตัวคูณมาติงเกลที่ผู้ใช้ระบุ: baseStake * (multiplier^step)
+    
     const currentStake = parseFloat((baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2));
+    const contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
+
+    // จัดเตรียมพารามิเตอร์เวลาให้สอดคล้องกับข้อกำหนด API ของ Deriv
+    let durationNumber = 5;
+    let durationUnitStr = 't';
+
+    if (durationVal === '5_ticks') { durationNumber = 5; durationUnitStr = 't'; }
+    else if (durationVal === '10_ticks') { durationNumber = 10; durationUnitStr = 't'; }
+    else if (durationVal === '5_min') { durationNumber = 5; durationUnitStr = 'm'; }
+    else if (durationVal === '15_min') { durationNumber = 15; durationUnitStr = 'm'; }
+
+    const calculatedWaitTicks = durationToWaitTicks(durationVal);
 
     if (!isAuthorized || !ws || ws.readyState !== WebSocket.OPEN) {
-      addLog(`📢 [VIRTUAL] สัญญาณ ${direction} เกิดขึ้น (ไม้ที่ ${s.currentStepCount + 1}) ทุนคำนวณ (x${martingaleMultiplier}): $${currentStake}`);
+      addLog(`📢 [VIRTUAL] สัญญาณ ${direction} ทำงาน (ไม้ M-${s.currentStepCount + 1}) ทุน: $${currentStake} [ระยะเวลา: ${durationNumber}${durationUnitStr}]`);
       
       const localContract = {
         id: 'ID-VIRTUAL-' + Math.floor(Math.random() * 89999 + 10000),
         dir: direction,
         entryPrice: s.lastPrice,
         entryTick: s.tickCounter,
-        resolveAtTick: s.tickCounter + waitTicks,
+        resolveAtTick: s.tickCounter + calculatedWaitTicks,
         step: s.currentStepCount + 1,
         stakeValue: currentStake,
         apiTracked: false
@@ -739,8 +730,6 @@
       return;
     }
 
-    const contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
-    
     const orderRequest = {
       buy: 1,
       price: currentStake,
@@ -749,8 +738,8 @@
         basis: 'stake',
         contract_type: contractType,
         currency: 'USD',
-        duration: waitTicks,
-        duration_unit: 't', 
+        duration: durationNumber,
+        duration_unit: durationUnitStr, 
         symbol: symbol
       }
     };
@@ -762,7 +751,7 @@
       dir: direction,
       entryPrice: s.lastPrice,
       entryTick: s.tickCounter,
-      resolveAtTick: s.tickCounter + waitTicks,
+      resolveAtTick: s.tickCounter + calculatedWaitTicks,
       step: s.currentStepCount + 1,
       stakeValue: currentStake,
       apiTracked: false
@@ -770,7 +759,6 @@
     s.pendingContracts.push(apiContract);
   }
 
-  // ---------------- UI Rendering Functions ----------------
   function renderPicker() {
     pickerContainer.innerHTML = ALL_SYMBOLS.map(item => {
       const isAct = watchedSymbols.includes(item.sym) ? 'active' : '';
@@ -829,7 +817,6 @@
         polylineHtml = `<polyline fill="none" stroke="${strokeColor}" stroke-width="1.2" points="${pts}"></polyline>`;
       }
 
-      // แสดงค่าทุนของไม้ถัดไปแบบไดนามิกตามสูตรตัวคูณปัจจุบัน
       const nextStakeVal = (baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2);
 
       return `<div class="watch-card ${focusedCls}" data-sym="${sym}">
@@ -837,7 +824,7 @@
         <div class="wc-mid"><span class="wc-price">${priceStr}</span><div class="wc-spark-wrap"><svg viewBox="0 0 120 28" preserveAspectRatio="none">${polylineHtml}</svg></div></div>
         <div class="wc-bottom">
           <div class="wc-wr">Win Rate: <span class="wc-wr-val ${wrCls}">${wrStr}</span></div>
-          <div>ดีล: ${s.pendingContracts.length} (M-${s.currentStepCount + 1} = $${nextStakeVal})</div>
+          <div>ดีลค้าง: ${s.pendingContracts.length} (M-${s.currentStepCount + 1} = $${nextStakeVal})</div>
         </div>
       </div>`;
     }).join('');
@@ -905,6 +892,7 @@
         const resCls = r.result.toLowerCase(); const resSym = r.result === 'WIN' ? 'W' : 'L';
         const dirCls = r.dir.toLowerCase() === 'higher' ? 'buy' : 'sell'; const dirLabel = r.dir === 'HIGHER' ? 'CALL' : 'PUT';
         const time = r.resolvedAt.toLocaleTimeString('th-TH', { hour12: false });
+        // 🛠️ แก้ไขตรงจุดนี้เพื่อดึง meta.dec ของแต่ละสินทรัพย์มาคุมจุดทศนิยมแทนค่า Fix ครับ
         return `<li>
           <span class="tl-result ${resCls}">${resSym}</span>
           <span class="tl-dir ${dirCls}">${dirLabel}</span>
@@ -938,7 +926,6 @@
     addLog(`⏰ เปลี่ยนเวลาสัญญาร่วมเป็น: ${durationSelect.options[durationSelect.selectedIndex].text} (ล้างประวัติคำนวณฐานใหม่)`);
   });
 
-  // ---------------- Stream Engine (WebSocket) ----------------
   function connectWS() {
     if (ws) { try { ws.close(); } catch(e){} }
     ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
@@ -1013,7 +1000,6 @@
     if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ forget: sym }));
   }
 
-  // ---------------- Core Algorithm Engine (MTF + Breakout) ----------------
   function onTickReceived(tick) {
     const sym = tick.symbol; if (!watchedSymbols.includes(sym)) return;
     ensureState(sym); const s = state[sym]; const price = parseFloat(tick.quote);
@@ -1071,7 +1057,6 @@
     renderWatchGrid(); if (sym === focusedSymbol) renderFocused(focusedSymbol); renderCombinedWinRate();
   }
 
-  // ---------------- Virtual & Live Contract Resolution ----------------
   function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
     const s = state[sym]; if (!s.pendingContracts.length) return;
     
@@ -1095,7 +1080,6 @@
           addLog(`🛑 [STOP LOSS] พอร์ต [${sym}] ผิดทางถึงลิมิตสูงสุดที่ล็อกไว้ (${allowedMaxSteps} ไม้) บ็อตตัดขาดทุนรอบนี้ทิ้ง (Cut Loss) และบังคับรีเซ็ตกลับไม้ 1 ทันที!`);
           s.currentStepCount = 0;
         } else {
-          // คำนวณขนาดไม้ถัดไปตามตัวคูณที่ตั้งค่าไว้เพื่อโชว์ใน Log
           const nextLayerStake = (baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2);
           addLog(`❌ [LOSS] ดีล ${c.id} แพ้ที่ไม้ ${c.step}! ระบบทบเงินมาติงเกลด้วยตัวคูณ x${martingaleMultiplier} (เตรียมไม้ M-${s.currentStepCount + 1} ขนาดทุน: $${nextLayerStake})`);
         }
@@ -1107,7 +1091,6 @@
     });
   }
 
-  // ---------------- Init ----------------
   ensureState(focusedSymbol); renderPicker(); renderWatchGrid(); renderFocused(focusedSymbol); connectWS();
 </script>
 
