@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terravolteco — Market Structure Terminal (Live API)</title>
+<title>Terravolteco — Market Structure Terminal (Demo/Real API)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -53,7 +53,7 @@
 
   .wrap{ max-width:780px; margin:0 auto; }
 
-  /* ---------- Header & Theme Control ---------- */
+  /* ---------- Header ---------- */
   header{
     display:flex;
     justify-content:space-between;
@@ -98,9 +98,7 @@
     font-size: 16px;
     transition: background 0.2s, border-color 0.2s;
   }
-  .theme-toggle-btn:hover {
-    border-color: var(--accent);
-  }
+  .theme-toggle-btn:hover { border-color: var(--accent); }
 
   .conn{
     display:flex;
@@ -157,6 +155,20 @@
     outline: none;
   }
   .api-input:focus { border-color: var(--accent); }
+  
+  /* ตัวเลือกประเภทบัญชี */
+  .account-mode-select {
+    background: var(--bg);
+    color: var(--ink-bright);
+    border: 1px solid var(--line);
+    padding: 10px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
   .api-btn {
     background: var(--accent);
     color: #000;
@@ -175,7 +187,17 @@
     color: var(--ink-dim);
     display: flex;
     gap: 14px;
+    align-items: center;
   }
+  .badge-mode {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .badge-mode.demo { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid #3b82f6; }
+  .badge-mode.real { background: rgba(16, 185, 129, 0.15); color: var(--buy); border: 1px solid var(--buy); }
   .balance-val { color: var(--buy); font-weight: 700; }
 
   /* ---------- Section labels ---------- */
@@ -191,7 +213,7 @@
     justify-content:space-between;
   }
 
-  /* ---------- Watchlist picker (chips) ---------- */
+  /* ---------- Watchlist picker ---------- */
   .watchlist-picker{
     display:flex;
     flex-wrap:wrap;
@@ -364,11 +386,16 @@
 
   <div class="api-panel">
     <div class="api-input-group">
-      <input type="password" class="api-input" id="api-token-input" placeholder="ใส่ Deriv API Token (สิทธิ์ Trade) ที่นี่...">
+      <select class="account-mode-select" id="account-mode-select">
+        <option value="demo">🧪 บัญชีจำลอง (Demo)</option>
+        <option value="real">💰 บัญชีจริง (Real Account)</option>
+      </select>
+      <input type="password" class="api-input" id="api-token-input" placeholder="ใส่ Deriv API Token ของโหมดที่เลือก...">
       <button class="api-btn" id="api-connect-btn">เชื่อมต่อพอร์ต</button>
     </div>
     <div class="account-info" id="account-info-display" style="display: none;">
-      <span>Account: <b id="acc-email" style="color:var(--ink-bright)">—</b></span>
+      <span class="badge-mode demo" id="badge-account-mode">DEMO</span>
+      <span>ID: <b id="acc-email" style="color:var(--ink-bright)">—</b></span>
       <span>Balance: <b class="balance-val" id="acc-balance">$0.00</b></span>
     </div>
   </div>
@@ -456,7 +483,7 @@
 
     <div class="track-panel">
       <div class="track-head">
-        <span>Track Record — บัญชีจริง</span>
+        <span>Track Record — บัญชีเชื่อมต่อ</span>
         <span id="track-count">0 สัญญาณ</span>
       </div>
       <div class="track-stats">
@@ -480,21 +507,22 @@
       <div class="track-bar" id="track-bar">
         <div class="tb-fill" id="tb-fill" style="width:0%"></div>
       </div>
-      <ul class="track-list" id="track-list">
-        <li class="empty">ยังไม่มีสัญญาณที่ได้ผลลัพธ์</li>
+      <button id="clear-api-btn" style="background:transparent; border:1px solid var(--line); color:var(--ink-dim); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); margin-top:10px;">RESET STATS</button>
+      <ul class="track-list" id="track-list" style="margin-top:12px;">
+        <li class="empty">ยังไม่มีคำสั่งซื้อที่ปิดดีลในเซสชันนี้</li>
       </ul>
     </div>
   </div>
 
   <div class="disclosure">
     <span class="ic">!</span>
-    <span><b>ข้อมูลนี้ไม่ใช่คำแนะนำการลงทุน</b> — บ็อตจะยิงส่งสัญญาสั่งซื้อสัญญาจริงตาม Token ที่ผูกไว้ ระบบมาติงเกลมีความผันผวนสูง โปรดทดสอบระบบบนบัญชี Demo (สิทธิ์เหรียญเสมือน) ให้มั่นใจก่อนโยกย้ายสู่เงินจริงเสมอ</span>
+    <span><b>ข้อมูลนี้ไม่ใช่คำแนะนำการลงทุน</b> — ระบบส่งคำสั่งออปชันอัตโนมัติรองรับทั้งพอร์ตเดโมเสมือนและพอร์ตจริง การสลับโหมดจะเปลี่ยนเป้าหมายเงินทุนทันที โปรดระมัดระวังและตั้งค่าจำนวนไม้สูงสุดควบคุม drawdown เสมอ</span>
   </div>
 
   <div class="log-panel">
-    <div class="log-head">Signal Log — พอร์ตซื้อขายเรียบลไทม์</div>
+    <div class="log-head">Terminal Log — ข้อมูลสตรีมมิ่ง API</div>
     <ul class="log-list" id="log-container">
-      <li>ระบบพร้อมทำงาน — ป้อน API Token และเลือกสินทรัพย์เพื่อเริ่มต้นสตรีม</li>
+      <li>ระบบพร้อมทำงาน — ป้อน API Token ตามโหมดที่ต้องการแล้วเริ่มทำงาน</li>
     </ul>
   </div>
 </div>
@@ -521,7 +549,8 @@
   let ws = null;
   let apiToken = '';
   let isAuthorized = false;
-  let baseStake = 1.0; // เงินทุนเริ่มต้นไม้ 1 ($1)
+  let accountMode = 'demo'; // 'demo' หรือ 'real'
+  let baseStake = 1.0; 
 
   // ---------------- State Management ----------------
   let watchedSymbols = ['R_75', 'R_100', '1HZ75V'];
@@ -584,11 +613,14 @@
   const apiStatus = document.getElementById('api-status');
   const themeToggleBtn = document.getElementById('theme-toggle');
   
+  const accountModeSelect = document.getElementById('account-mode-select');
   const apiTokenInput = document.getElementById('api-token-input');
   const apiConnectBtn = document.getElementById('api-connect-btn');
   const accountInfoDisplay = document.getElementById('account-info-display');
+  const badgeAccountMode = document.getElementById('badge-account-mode');
   const accEmail = document.getElementById('acc-email');
   const accBalance = document.getElementById('acc-balance');
+  const clearApiBtn = document.getElementById('clear-api-btn');
 
   // 🌓 สลับธีม มืด / สว่าง
   themeToggleBtn.addEventListener('click', () => {
@@ -605,7 +637,15 @@
 
   maxStepsSelect.addEventListener('change', (e) => {
     allowedMaxSteps = parseInt(e.target.value);
-    addLog(`🛡️ ล็อกเพดานความปลอดภัยมาติงเกลสูงสุดเป็น: ไม่เกิน ${allowedMaxSteps} ไม้`);
+    addLog(`🛡️ ปรับขีดจำกัดเพดานทบไม้สูงสุดเป็น: ไม่เกิน ${allowedMaxSteps} ไม้`);
+  });
+
+  clearApiBtn.addEventListener('click', () => {
+    if(confirm('ต้องการรีเซ็ตประวัติและค่า Win Rate ในเซสชันนี้ใช่ไหมครับ?')) {
+      watchedSymbols.forEach(sym => { state[sym] = freshState(); });
+      renderWatchGrid(); renderFocused(focusedSymbol); renderCombinedWinRate();
+      addLog(`🧹 ล้างสถิติประวัติดีลบนเทอร์มินอลเรียบร้อยแล้ว`);
+    }
   });
 
   // 🎵 ระบบเสียงแจ้งเตือนไร้ไฟล์
@@ -619,28 +659,28 @@
         playTone(audioCtx, 440, 0.12, 0);
         playTone(audioCtx, 349.23, 0.2, 0.1);
       }
-    } catch (e) { console.log("Audio Alert Blocked By Browser", e); }
+    } catch (e) { console.log("Audio Alert Blocked", e); }
   }
 
   function playTone(ctx, freq, duration, delay) {
     const osc = ctx.createOscillator();
     const gainNode = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
+    osc.type = 'sine'; osc.frequency.value = freq;
     gainNode.gain.setValueAtTime(0.15, ctx.currentTime + delay);
     gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
-    osc.connect(gainNode);
-    gainNode.connect(ctx.destination);
-    osc.start(ctx.currentTime + delay);
-    osc.stop(ctx.currentTime + delay + duration);
+    osc.connect(gainNode); gainNode.connect(ctx.destination);
+    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + duration);
   }
 
-  // ---------------- API Event Action ----------------
+  // ---------------- API Actions & Handlers ----------------
   apiConnectBtn.addEventListener('click', () => {
     const token = apiTokenInput.value.trim();
-    if(!token) { alert('กรุณากรอก API Token ก่อนกดเชื่อมต่อครับ'); return; }
+    if(!token) { alert('กรุณากรอก API Token เพื่อระบุสิทธิ์พอร์ตก่อนครับ'); return; }
+    
     apiToken = token;
-    addLog(`🔑 กำลังส่งคำสั่งเพื่อ Authen ขอยืนยันสิทธิ์บัญชีเทรดจริง...`);
+    accountMode = accountModeSelect.value; // ดึงค่าจากตัวเลือกว่าเป็นเดโมหรือพอร์ตจริง
+    
+    addLog(`🔑 กำลังส่งโครงสร้างสิทธิ์ยืนยันพอร์ตย่อย [โหมด: ${accountMode.toUpperCase()}]...`);
     sendAuthorize();
   });
 
@@ -656,21 +696,36 @@
     }
   }
 
-  // ---------------- Real Order Execution Part ----------------
+  // ---------------- Real / Demo Contract Execution ----------------
   function executeRealContract(symbol, direction) {
+    ensureState(symbol);
+    const s = state[symbol];
+    const waitTicks = durationToWaitTicks(durationVal);
+
+    // คำนวณเงินทบไม้ตามสูตรมาติงเกลทวีคูณ
+    const currentStake = baseStake * Math.pow(2, s.currentStepCount);
+
+    // หากยังไม่ต่อ API จะแสดงเป็นระบบแจ้งเตือนทั่วไปในลูปเสมือน
     if (!isAuthorized || !ws || ws.readyState !== WebSocket.OPEN) {
-      addLog(`⚠️ [ORDER SKIPPED] สัญญาณแจ้งเตือนเข้าแต่บ็อตไม่เปิดออเดอร์ เนื่องจากคุณยังไม่ได้ผูกต่อ API พอร์ตจริง`);
+      addLog(`📢 [VIRTUAL ALERT] สัญญาณ ${direction} บน ${symbol} เกิดขึ้น (ไม้ที่ ${s.currentStepCount + 1}) ทุนคำนวณ: $${currentStake}`);
+      
+      const localContract = {
+        id: 'ID-VIRTUAL-' + Math.floor(Math.random() * 89999 + 10000),
+        dir: direction,
+        entryPrice: s.lastPrice,
+        entryTick: s.tickCounter,
+        resolveAtTick: s.tickCounter + waitTicks,
+        step: s.currentStepCount + 1,
+        stakeValue: currentStake,
+        apiTracked: false
+      };
+      s.pendingContracts.push(localContract);
       return;
     }
 
-    ensureState(symbol);
-    const s = state[symbol];
     const contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
-    const waitTicks = durationToWaitTicks(durationVal);
-
-    // สูตรทบเงินมาติงเกลคำนวณแบบทวีคูณจริง ($1 -> $2 -> $4 -> $8 -> $16)
-    const currentStake = baseStake * Math.pow(2, s.currentStepCount);
-
+    
+    // โครงสร้าง Payload ยิงคำสั่งเข้าสู่เซิร์ฟเวอร์ Deriv โดยตรง
     const orderRequest = {
       buy: 1,
       price: currentStake,
@@ -680,16 +735,16 @@
         contract_type: contractType,
         currency: 'USD',
         duration: waitTicks,
-        duration_unit: 't', // ส่งเป็นวินาทีแบบนับจำนวน Ticks ('t')
+        duration_unit: 't', 
         symbol: symbol
       }
     };
 
     ws.send(JSON.stringify(orderRequest));
     
-    // พล็อตโครงสร้างตั๋วสัญญารอผลลัพธ์ในบอร์ดมอนิเตอร์
-    const localContract = {
-      id: 'PENDING-API', // รอเซิร์ฟเวอร์ตอบเลข ID กลับมาสวมแทน
+    // บันทึกตั๋วในบอร์ดเพื่อรอนับติ๊กถอยหลังตัดสินผลลัพธ์
+    const apiContract = {
+      id: 'AWAITING-API-ID',
       dir: direction,
       entryPrice: s.lastPrice,
       entryTick: s.tickCounter,
@@ -698,7 +753,7 @@
       stakeValue: currentStake,
       apiTracked: false
     };
-    s.pendingContracts.push(localContract);
+    s.pendingContracts.push(apiContract);
   }
 
   // ---------------- UI Rendering Functions ----------------
@@ -765,7 +820,7 @@
         <div class="wc-mid"><span class="wc-price">${priceStr}</span><div class="wc-spark-wrap"><svg viewBox="0 0 120 28" preserveAspectRatio="none">${polylineHtml}</svg></div></div>
         <div class="wc-bottom">
           <div class="wc-wr">Win Rate: <span class="wc-wr-val ${wrCls}">${wrStr}</span></div>
-          <div>คิวรอผล API: ${s.pendingContracts.length} (ไม้ทบ: M-${s.currentStepCount + 1})</div>
+          <div>ดีลถือครอง: ${s.pendingContracts.length} (ไม้ถัดไป: M-${s.currentStepCount + 1})</div>
         </div>
       </div>`;
     }).join('');
@@ -816,7 +871,7 @@
     const total = s.statWins + s.statLosses;
     const wrRateStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
     
-    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} ออเดอร์ (ไม้ถัดไป: M-${s.currentStepCount + 1}/${allowedMaxSteps})`;
+    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} ดีล (สเตปมาติงเกลปัจจุบัน: M-${s.currentStepCount + 1}/${allowedMaxSteps})`;
     document.getElementById('ts-winrate').textContent = wrRateStr;
     document.getElementById('ts-wins').textContent = s.statWins;
     document.getElementById('ts-losses').textContent = s.statLosses;
@@ -861,7 +916,7 @@
     durationVal = e.target.value; lookbackPeriod = durationToLookback(durationVal);
     watchedSymbols.forEach(sym => { state[sym] = freshState(); });
     renderWatchGrid(); if (watchedSymbols.includes(focusedSymbol)) renderFocused(focusedSymbol);
-    addLog(`⏰ ปรับอายุสัญญาออปชันกลางเป็น: ${durationSelect.options[durationSelect.selectedIndex].text} (ล้างสถิติเริ่มต้นโครงสร้างใหม่)`);
+    addLog(`⏰ เปลี่ยนเวลาสัญญาร่วมเป็น: ${durationSelect.options[durationSelect.selectedIndex].text} (ล้างประวัติเพื่อคำนวณฐานเวลาใหม่)`);
   });
 
   // ---------------- Stream Engine (WebSocket) ----------------
@@ -871,9 +926,8 @@
 
     ws.onopen = () => {
       connDot.className = 'dot live'; apiStatus.textContent = 'LIVE';
-      addLog('📡 ทำการเชื่อมสตรีมมิ่งผ่านเซิร์ฟเวอร์หลัก Deriv WebSocket API');
+      addLog('📡 เชื่อมต่อเกตเวย์รับข้อมูลสดผ่าน Deriv WebSocket Server');
       
-      // ส่งคำสั่งกรณีกดต่อพอร์ตคาไว้
       if(apiToken) sendAuthorize();
       watchedSymbols.forEach(sym => subscribeSymbol(sym));
     };
@@ -881,43 +935,47 @@
     ws.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       
-      // ดักรับสัญญาณการเปิดรับสิทธิ์บัญชีเทรด
+      // ดักรับสัญญาณเมื่อเซิร์ฟเวอร์ตรวจสอบความถูกต้องสิทธิ์บัญชี
       if (data.msg_type === 'authorize') {
         if(data.error) {
-          isAuthorized = false; alert(`Authorize Failed: ${data.error.message}`);
-          addLog(`❌ ต่อพอร์ตล้มเหลว: API Token ไม่ถูกต้องหรือหมดอายุสิทธิ์`);
+          isAuthorized = false; alert(`การยืนยันสิทธิ์ Token ล้มเหลว: ${data.error.message}`);
+          addLog(`❌ ปฏิเสธการต่อพอร์ต: กรุณาตรวจสอบว่าเลือกประเภทบัญชีสอดคล้องกับตัว Token หรือไม่`);
         } else {
           isAuthorized = true;
-          apiTokenInput.style.display = 'none'; apiConnectBtn.style.display = 'none';
+          apiTokenInput.style.display = 'none'; accountModeSelect.style.display = 'none'; apiConnectBtn.style.display = 'none';
           accountInfoDisplay.style.display = 'flex';
+          
+          // ปรับแต่งตราสัญลักษณ์แสดงประเภทพอร์ตย่อย
+          badgeAccountMode.textContent = accountMode === 'demo' ? 'DEMO 🧪' : 'REAL 💰';
+          badgeAccountMode.className = `badge-mode ${accountMode}`;
+          
           accEmail.textContent = data.authorize.email;
-          addLog(`✅ เชื่อมต่อบัญชีสำเร็จ! ยินดีต้อนรับคุณ ${data.authorize.email} (สิทธิ์ซื้อขายเปิดทำงานแล้ว)`);
+          addLog(`✅ บัญชี ${data.authorize.email} เปิดระบบสำเร็จ! [โหมดพอร์ต: ${accountMode.toUpperCase()}]`);
           fetchBalance();
         }
       }
 
-      // ดักรับสตรีมยอดเงินคงเหลือล่าสุด
+      // ดักรับข้อมูลเงินทุนกระเป๋าเรียลไทม์
       if (data.msg_type === 'balance') {
         if(!data.error && data.balance) {
           accBalance.textContent = `$${parseFloat(data.balance.balance).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
         }
       }
 
-      // ดักรับผลเมื่อออเดอร์ถูกส่งซื้อสำเร็จบนเซิร์ฟเวอร์
+      // ดักรับดีลหลังส่งคำสั่งซื้อสำเร็จบนเซิร์ฟเวอร์จริง/เดโม
       if (data.msg_type === 'buy') {
         if(data.error) {
-          addLog(`🚨 [API TRADE REJECTED] เซิร์ฟเวอร์ปฏิเสธคำสั่งซื้อ: ${data.error.message}`);
+          addLog(`🚨 [API ERROR] เซิร์ฟเวอร์ปฏิเสธดีล: ${data.error.message}`);
         } else {
           const buyInfo = data.buy;
-          addLog(`📦 [ORDER COMPLETED] สัญญาได้รับการยอมรับเข้าพอร์ตเรียบร้อย! เลขดีล: ${buyInfo.contract_id}`);
+          addLog(`📦 [API ORDER ACCEPTED] ออกคำสั่งซื้อสำเร็จ! เลขที่ดีล: ${buyInfo.contract_id} (จำนวนทุน: $${buyInfo.price})`);
           
-          // ผูกเลขที่ได้จาก API แทนที่ตั๋วล่าสุด
+          // ค้นหาดีลจำลองตัวล่าสุดเพื่อนำ ID ล่าสุดมาสวมทับ
           watchedSymbols.forEach(sym => {
             ensureState(sym);
             state[sym].pendingContracts.forEach(c => {
-              if(c.id === 'PENDING-API' && !c.apiTracked) {
-                c.id = buyInfo.contract_id;
-                c.apiTracked = true;
+              if(c.id === 'AWAITING-API-ID' && !c.apiTracked) {
+                c.id = buyInfo.contract_id; c.apiTracked = true;
               }
             });
           });
@@ -950,7 +1008,7 @@
     s.tickCounter++; s.prevPrice = s.lastPrice; s.lastPrice = price; s.ticks.push(price);
     if (s.ticks.length > lookbackPeriod) s.ticks.shift();
 
-    // ดักตรวจสอบผลดีลออปชันผ่านระบบ Tick นับถอยหลังเพื่อคุมมาติงเกล
+    // ดักตรวจสอบสัญญาที่ครบอายุนับถอยหลังติ๊ก
     evaluatePendingContracts(sym, price, s.tickCounter);
 
     if (s.ticks.length >= 15) {
@@ -972,7 +1030,7 @@
 
       if (price > midMin && price < midMax) {
         s.sigType = 'BLOCK'; s.sigText = 'COMPRESSION: MID-ZONE';
-        s.sigSub = `⏳ ราคาแกว่งบีบอัดตัวแคบ รอจังหวะทะลุกรอบระเบิดเบรคเอาท์ (เทรนใหญ่: ${majorBias})`;
+        s.sigSub = `⏳ สภาพราคาบีบอัดตัวในกรอบสะสมพลัง รอจังหวะระเบิดเบรคเอาท์ (เทรนหลัก: ${majorBias})`;
       } 
       else if (price >= s.resistance && majorBias === 'BULLISH') {
         s.sigType = 'BUY'; s.sigText = 'BREAKOUT: HIGHER';
@@ -980,8 +1038,7 @@
         
         if (prevSigType !== 'BUY') {
           playSignalSound('HIGHER'); 
-          // ⚡ ยิงคำสั่งซื้อเข้าไปที่พอร์ตจริงบนเซิร์ฟเวอร์ Deriv
-          executeRealContract(sym, 'HIGHER');
+          executeRealContract(sym, 'HIGHER'); // ประมวลคำสั่งซื้อจริง/เดโมตามพอร์ตที่ต่อ
         }
       } 
       else if (price <= s.support && majorBias === 'BEARISH') {
@@ -990,7 +1047,6 @@
         
         if (prevSigType !== 'SELL') {
           playSignalSound('LOWER');
-          // ⚡ ยิงคำสั่งซื้อเข้าไปที่พอร์ตจริงบนเซิร์ฟเวอร์ Deriv
           executeRealContract(sym, 'LOWER');
         }
       } 
@@ -1003,7 +1059,7 @@
     renderWatchGrid(); if (sym === focusedSymbol) renderFocused(focusedSymbol); renderCombinedWinRate();
   }
 
-  // ---------------- Virtual & Real Contract Evaluation ----------------
+  // ---------------- Virtual & Live Contract Resolution ----------------
   function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
     const s = state[sym]; if (!s.pendingContracts.length) return;
     const meta = ALL_SYMBOLS.find(i => i.sym === sym);
@@ -1018,17 +1074,17 @@
 
       if (result === 'WIN') {
         s.statWins++;
-        addLog(`🎉 [PROFIT!] ออเดอร์ ${c.id} ชนะดีลที่ไม้ ${c.step}! ระบบสั่ง "รีเซ็ต" ตารางสเตปเงินกลับมาไม้ 1`);
-        s.currentStepCount = 0; // ล้างรอบทบไม้กลับไปนับ 1 ใหม่
+        addLog(`🎉 [PROFIT] ดีล ${c.id} ชนะที่ไม้ ${c.step}! [สำเร็จทุน $${c.stakeValue}] -> รีเซ็ตกลับไม้ 1`);
+        s.currentStepCount = 0; 
       } else {
         s.statLosses++;
-        s.currentStepCount++; // ทบไม้ขยับระดับตัวคูณคูณเงินเพิ่มขึ้น
+        s.currentStepCount++; 
         
         if (s.currentStepCount >= allowedMaxSteps) {
-          addLog(`🛑 [STOP LOSS ACTIVATED] พอร์ต [${sym}] ผิดทางต่อเนื่องถึงลิมิตเพดานความปลอดภัย (${allowedMaxSteps} ไม้) บ็อตตัดขาดทุนรอบนี้ทิ้ง (Cut Loss) และบังคับรีเซ็ตกลับไม้ 1 เพื่อปกป้องทุนคงเหลือพอร์ตหลัก!`);
+          addLog(`🛑 [STOP LOSS ACTIVATED] พอร์ต [${sym}] ผิดทางต่อเนื่องถึงลิมิตขีดจำกัดสูงสุดที่ล็อกไว้ (${allowedMaxSteps} ไม้) บ็อตตัดขาดทุนรอบนี้ทิ้ง (Cut Loss) และบังคับรีเซ็ตกลับไม้ 1 ทันที!`);
           s.currentStepCount = 0;
         } else {
-          addLog(`❌ [LOSS] ออเดอร์ ${c.id} แพ้ดีลที่ไม้ ${c.step}! สั่งคำนวณมาติงเกลขยับเงินทบไม้ถัดไป (เตรียมไม้ M-${s.currentStepCount + 1})`);
+          addLog(`❌ [LOSS] ดีล ${c.id} แพ้ที่ไม้ ${c.step}! สั่งคำนวณทบไม้เพิ่มความจุเงินทุนสเตปถัดไป (เตรียมไม้ M-${s.currentStepCount + 1})`);
         }
       }
 
