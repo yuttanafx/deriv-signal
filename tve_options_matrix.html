@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TVE Options Matrix · Manual-Confirm Scanner</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#08080d;--panel:#0f0f16;--panel2:#14141e;--border:#1c1c2a;
+  --gold:#f5c842;--gold-dim:rgba(245,200,66,0.10);
+  --green:#00e676;--green-dim:rgba(0,230,118,0.10);
+  --red:#ff4455;--red-dim:rgba(255,68,85,0.10);
+  --blue:#4fc3f7;--blue-dim:rgba(79,195,247,0.10);
+  --orange:#ff9800;--orange-dim:rgba(255,152,0,0.10);
+  --muted:#44445a;--text:#e0e0ee;--text2:#7070a0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel);gap:12px;}
+.logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.logo small{color:var(--text2);font-size:10px;font-weight:400;margin-left:6px;}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.live-badge{display:flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid rgba(0,230,118,0.25);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--green);font-family:'Space Mono',monospace;}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.5s ease-in-out infinite;}
+#lastUpdate{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.layout{display:grid;grid-template-columns:1fr 400px;height:calc(100vh - 49px);}
+@media(max-width:900px){.layout{grid-template-columns:1fr;height:auto;}}
+.left{display:flex;flex-direction:column;overflow:hidden;background:#000;}
+.chart-container-tv{flex:1;width:100%;min-height:480px;}
+.price-bar{padding:14px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--panel),var(--bg));}
+.price-label{font-size:9px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:3px;}
+.price-title{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);}
+.price-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+.sidebar{border-left:1px solid var(--border);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border);}
+.sec-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:10px;}
+.asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.asset-btn{padding:8px 10px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s;position:relative;}
+.asset-btn .tbadge{font-size:7px;background:var(--bg);padding:2px 4px;border-radius:3px;color:var(--muted);}
+.asset-btn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.asset-btn.active .tbadge{background:var(--gold);color:var(--bg);}
+.asset-btn.has-signal{box-shadow:0 0 0 1px var(--green) inset;}
+.asset-btn.has-signal::before{content:'';position:absolute;top:5px;right:5px;width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);}
+.asset-btn.has-signal.is-sell::before{background:var(--red);box-shadow:0 0 6px var(--red);}
+.row-btns{display:flex;gap:5px;margin-bottom:8px;}
+.rbtn{flex:1;padding:7px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;transition:all 0.15s;text-align:center;}
+.rbtn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.rbtn.fl-loose.active{background:var(--orange-dim);border-color:rgba(255,152,0,0.4);color:var(--orange);}
+.rbtn.fl-tight.active{background:var(--green-dim);border-color:rgba(0,230,118,0.4);color:var(--green);}
+.filter-info{padding:7px 9px;background:var(--panel2);border-radius:5px;font-size:9px;color:var(--text2);font-family:'Space Mono',monospace;border-left:2px solid var(--blue);line-height:1.6;}
+
+.ctrl-field{display:flex;flex-direction:column;gap:4px;margin-bottom:8px;}
+.ctrl-field label{font-family:'Space Mono',monospace;font-size:8px;color:var(--text2);text-transform:uppercase;}
+.deriv-select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:11px;outline:none;width:100%;}
+
+.stats-bar{display:flex;gap:0;background:var(--panel2);border-bottom:1px solid var(--border);}
+.sstat{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--border);}
+.sstat:last-child{border-right:none;}
+.sstat-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--gold);}
+.sstat-l{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;}
+
+.sig-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:10px;}
+.sig-table th{text-align:left;padding:7px 7px;color:var(--muted);border-bottom:1px solid var(--border);font-size:8px;text-transform:uppercase;}
+.sig-table td{padding:8px 7px;border-bottom:1px solid rgba(28,28,42,0.6);vertical-align:middle;}
+.sig-table tr:hover td{background:rgba(255,255,255,0.02);}
+.sig-table tr.is-signaled td{background:rgba(245,200,66,0.03);}
+.sym-cell{cursor:pointer;font-weight:700;color:var(--blue);text-decoration:underline;display:flex;align-items:center;gap:6px;}
+.sym-cell.focused{color:var(--gold);}
+.signal-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.signal-dot.buy{background:var(--green);box-shadow:0 0 6px rgba(0,230,118,0.6);}
+.signal-dot.sell{background:var(--red);box-shadow:0 0 6px rgba(255,68,85,0.6);}
+.signal-dot.none{background:var(--muted);}
+.dir-badge{padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;display:inline-block;}
+.dir-badge.buy{background:var(--green-dim);color:var(--green);box-shadow:0 0 6px rgba(0,230,118,0.25);}
+.dir-badge.sell{background:var(--red-dim);color:var(--red);box-shadow:0 0 6px rgba(255,68,85,0.25);}
+.dir-badge.hold{background:var(--panel2);color:var(--text2);}
+.dir-badge.filtered{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,152,0,0.2);}
+.score-wrap{display:flex;align-items:center;gap:5px;}
+.score-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;min-width:36px;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
+.score-num{font-size:9px;font-weight:700;min-width:20px;text-align:right;}
+.spark{display:inline-block;vertical-align:middle;margin-left:3px;}
+
+.history-panel{padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(245,200,66,0.03),transparent);}
+.history-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.history-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.history-rst{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);background:var(--red-dim);border:1px solid rgba(255,68,85,0.2);border-radius:3px;padding:2px 6px;cursor:pointer;}
+.log-wrap{max-height:160px;overflow-y:auto;}
+.log-wrap::-webkit-scrollbar{width:2px;}
+.log-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:9px;}
+.log-table th{color:var(--muted);padding:3px 4px;text-align:left;font-size:8px;border-bottom:1px solid var(--border);}
+.log-table td{padding:3px 4px;border-bottom:1px solid rgba(28,28,42,0.5);color:var(--text2);}
+.d-call{color:var(--green);}
+.d-put{color:var(--red);}
+.log-empty{text-align:center;padding:14px;color:var(--muted);font-size:9px;}
+.disclaimer{padding:10px 16px;font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;line-height:1.6;border-top:1px solid var(--border);}
+
+.refresh-btn{margin:12px 14px;padding:10px;background:var(--gold-dim);border:1px solid rgba(245,200,66,0.25);border-radius:7px;color:var(--gold);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;width:calc(100% - 28px);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.refresh-btn:hover{background:rgba(245,200,66,0.18);}
+.spin-ic{display:inline-block;}
+.refresh-btn.spinning .spin-ic{animation:spinCW 0.6s linear infinite;}
+@keyframes spinCW{to{transform:rotate(360deg)}}
+
+/* Deriv connection + manual trade controls */
+.deriv-panel{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.deriv-input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px;border-radius:4px;font-family:'Space Mono',monospace;font-size:11px;outline:none;}
+.deriv-btn{background:var(--gold);color:var(--bg);border:none;padding:8px;border-radius:4px;font-weight:700;font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif;}
+.deriv-logout{background:rgba(255,68,85,0.15);border:1px solid rgba(255,68,85,0.3);color:var(--red);padding:6px;border-radius:4px;font-size:10px;cursor:pointer;text-align:center;font-weight:600;margin-top:4px;}
+.stake-mode-row{display:flex;gap:5px;}
+.stake-mode-btn{flex:1;padding:7px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;text-align:center;}
+.stake-mode-btn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.martingale-box{display:none;flex-direction:column;gap:8px;margin-top:6px;padding-top:8px;border-top:1px dashed var(--border);}
+.martingale-box.show{display:flex;}
+.next-stake-readout{background:var(--bg);border:1px solid rgba(245,200,66,0.25);border-radius:5px;padding:8px;text-align:center;font-family:'Space Mono',monospace;}
+.next-stake-readout .ns-amt{color:var(--gold);font-size:16px;font-weight:700;}
+.next-stake-readout .ns-meta{color:var(--text2);font-size:8px;margin-top:2px;}
+.trade-cell-btn{padding:4px 8px;border-radius:4px;font-size:9px;font-weight:700;cursor:pointer;border:none;font-family:'Space Grotesk',sans-serif;}
+.trade-cell-btn.call{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,230,118,0.35);}
+.trade-cell-btn.put{background:var(--red-dim);color:var(--red);border:1px solid rgba(255,68,85,0.35);}
+.trade-cell-btn:disabled{opacity:0.35;cursor:not-allowed;}
+.trade-cell-btn.placed{background:var(--panel2);color:var(--muted);border:1px solid var(--border);}
+
+/* Confirm modal */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;z-index:999;}
+.confirm-overlay.show{display:flex;}
+.confirm-box{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;width:300px;}
+.confirm-box h3{font-family:'Space Mono',monospace;font-size:13px;color:var(--gold);margin-bottom:12px;}
+.confirm-row{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);padding:5px 0;border-bottom:1px solid rgba(28,28,42,0.6);font-family:'Space Mono',monospace;}
+.confirm-row b{color:var(--text);}
+.confirm-actions{display:flex;gap:8px;margin-top:14px;}
+.confirm-actions button{flex:1;padding:9px;border-radius:6px;border:none;font-weight:700;font-size:11px;cursor:pointer;font-family:'Space Grotesk',sans-serif;}
+.confirm-go{background:var(--gold);color:var(--bg);}
+.confirm-cancel{background:var(--panel2);color:var(--text2);border:1px solid var(--border) !important;}
+.r-win{color:var(--green);font-weight:700;}
+.r-lose{color:var(--red);font-weight:700;}
+.r-pend{color:var(--gold);font-size:8px;}
+</style>
+<script src="https://s3.tradingview.com/tv.js"></script>
+</head>
+<body>
+<div class="header">
+  <div class="logo">◈ TVE OPTIONS MATRIX <small>Signal Scanner · Manual-Confirm Trading Only</small></div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="deriv-status">SCANNING (PUBLIC FEED)</span></div>
+    <div id="lastUpdate">—</div>
+  </div>
+</div>
+<div class="layout">
+  <div class="left">
+    <div class="price-bar">
+      <div class="price-label" style="color:var(--blue)">MODE: MANUAL-CONFIRM 🔵 (ทุกออเดอร์ต้องกดยืนยัน)</div>
+      <div class="price-title" id="focusTitle">R_75</div>
+      <div class="price-sub">คลิกชื่อคู่เงิน (จุดเขียว/แดง = มีสัญญาณ) เพื่อเปิดกราฟ — กดปุ่ม CALL/PUT ในตารางเพื่อเปิด Pop-up ยืนยันก่อนส่งออเดอร์จริง</div>
+    </div>
+    <div class="chart-container-tv" id="tv_chart_container"></div>
+  </div>
+  <div class="sidebar">
+    <div class="sec">
+      <div class="sec-title">แผงควบคุมพอร์ต DERIV (REALTIME GATEWAY)</div>
+      <div class="deriv-panel" id="deriv-gate-inputs">
+        <select class="deriv-select" id="deriv-mode-select">
+          <option value="demo">🧪 บัญชีจำลอง (Demo)</option>
+          <option value="real">💰 บัญชีจริง (Real Account)</option>
+        </select>
+        <input type="password" class="deriv-input" id="deriv-token-input" placeholder="ใส่ Deriv API Token...">
+        <button class="deriv-btn" onclick="connectDerivPort()">เชื่อมต่อ API Gateway</button>
+      </div>
+      <div class="deriv-panel" id="deriv-info-display" style="display:none;">
+        <div style="font-size:11px; font-family:'Space Mono'; color:var(--text)">ID: <b id="d-acc-email">—</b></div>
+        <div style="font-size:13px; font-family:'Space Mono'; color:var(--green)">Balance: <b id="d-acc-balance">$0.00</b></div>
+        <button class="deriv-logout" onclick="disconnectDerivPort()">🔒 สลับพอร์ต / ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <div class="sec" style="background: rgba(245,200,66,0.01);">
+      <div class="sec-title" style="color: var(--gold)">💵 รูปแบบเงินเดิมพัน (ต้องกดยืนยันทุกออเดอร์)</div>
+      <div class="stake-mode-row">
+        <div class="stake-mode-btn active" id="stakeModeFixed" onclick="setStakeMode('fixed')">Fixed คงที่</div>
+        <div class="stake-mode-btn" id="stakeModeMartingale" onclick="setStakeMode('martingale')">Martingale</div>
+      </div>
+      <div class="ctrl-field" style="margin-top:8px;">
+        <label for="fixed-stake-input">จำนวนเงินเดิมพันคงที่ (USD)</label>
+        <input type="number" class="deriv-input" id="fixed-stake-input" value="1.00" min="0.35" step="0.10" onchange="updateStakeSettings()">
+      </div>
+      <div class="martingale-box" id="martingaleBox">
+        <div class="ctrl-field">
+          <label for="m-multiplier-select">📈 ตัวคูณเงินทบ (Multiplier)</label>
+          <select class="deriv-select" id="m-multiplier-select" onchange="updateStakeSettings()">
+            <option value="1.5">x1.5 (ถนอมทุน)</option>
+            <option value="2.0" selected>x2.0 (มาตรฐาน)</option>
+            <option value="2.5">x2.5</option>
+            <option value="3.0">x3.0 (ดุดัน)</option>
+          </select>
+        </div>
+        <div class="ctrl-field">
+          <label for="m-max-steps-select">🛡️ จำนวนไม้ทบสูงสุด</label>
+          <select class="deriv-select" id="m-max-steps-select" onchange="updateStakeSettings()">
+            <option value="3">สูงสุด 3 ไม้</option>
+            <option value="5" selected>สูงสุด 5 ไม้</option>
+            <option value="7">สูงสุด 7 ไม้</option>
+            <option value="10">สูงสุด 10 ไม้</option>
+          </select>
+        </div>
+        <div class="ctrl-field">
+          <label for="m-base-stake-input">เงินเดิมพันไม้แรก (USD)</label>
+          <input type="number" class="deriv-input" id="m-base-stake-input" value="1.00" min="0.35" step="0.10" onchange="updateStakeSettings()">
+        </div>
+        <div class="next-stake-readout">
+          <div class="ns-amt" id="nextStakeAmt">$1.00</div>
+          <div class="ns-meta" id="nextStakeMeta">ไม้ที่ 1 / 5 · จะรีเซ็ตเป็นไม้แรกเมื่อชนะ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">สินทรัพย์ที่เลือกตรวจจับสัญญาณ</div>
+      <div class="asset-grid">
+        <button class="asset-btn active" id="asset-R_10" onclick="toggleAsset('R_10')">Volatility 10 <span class="tbadge">R_10</span></button>
+        <button class="asset-btn active" id="asset-R_25" onclick="toggleAsset('R_25')">Volatility 25 <span class="tbadge">R_25</span></button>
+        <button class="asset-btn active" id="asset-R_50" onclick="toggleAsset('R_50')">Volatility 50 <span class="tbadge">R_50</span></button>
+        <button class="asset-btn active" id="asset-R_75" onclick="toggleAsset('R_75')">Volatility 75 <span class="tbadge">R_75</span></button>
+        <button class="asset-btn" id="asset-R_100" onclick="toggleAsset('R_100')">Volatility 100 <span class="tbadge">R_100</span></button>
+        <button class="asset-btn" id="asset-1HZ75V" onclick="toggleAsset('1HZ75V')">Vol 75 (1s) <span class="tbadge">1HZ75V</span></button>
+        <button class="asset-btn" id="asset-1HZ100V" onclick="toggleAsset('1HZ100V')">Vol 100 (1s) <span class="tbadge">1HZ100V</span></button>
+        <button class="asset-btn" id="asset-R_150" onclick="toggleAsset('R_150')">Volatility 150 <span class="tbadge">R_150</span></button>
+      </div>
+    </div>
+
+    <div class="sec" style="background: rgba(245,200,66,0.01);">
+      <div class="sec-title" style="color: var(--gold)">⚙️ ตัวกรอง ATR SPACE (เงื่อนไขเดิม)</div>
+      <div class="ctrl-field">
+        <label for="atr-space-select">🌌 ระยะทางเคลื่อนที่คงเหลือ (ATR Safe Buffer)</label>
+        <select class="deriv-select" id="atr-space-select" onchange="updateAtrSettings()">
+          <option value="1.0">อย่างน้อย 1.0 x ATR (เปิดพื้นที่วิ่งระดับปกติ)</option>
+          <option value="1.5" selected>อย่างน้อย 1.5 x ATR (แนะนำ - ปลอดภัยสัญญานาที)</option>
+          <option value="2.0">อย่างน้อย 2.0 x ATR (เข้มงวดสูง คัดเฉพาะไม้ต้นเทรนด์โล่งๆ)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">โครงสร้างเวลาแท่งเทียน</div>
+      <div class="row-btns">
+        <button class="rbtn active" id="tf15" onclick="changeTF('15')">M1</button>
+        <button class="rbtn" id="tf60" onclick="changeTF('60')">M5</button>
+        <button class="rbtn" id="tf240" onclick="changeTF('240')">M15</button>
+      </div>
+      <div class="sec-title" style="margin-top:8px;">ระดับฟิลเตอร์กรองความเสี่ยง</div>
+      <div class="row-btns">
+        <button class="rbtn fl-loose" id="fLoose" onclick="setFilter('loose')">LOOSE</button>
+        <button class="rbtn active" id="fNormal" onclick="setFilter('normal')">NORMAL</button>
+        <button class="rbtn fl-tight" id="fTight" onclick="setFilter('tight')">TIGHT</button>
+      </div>
+      <div class="filter-info" id="filterInfo"><b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน</div>
+    </div>
+
+    <div class="sec" style="background: rgba(79,195,247,0.02);">
+      <div class="sec-title" style="color: var(--blue)">🧭 ตัวกรองยืนยัน Multi-Timeframe</div>
+      <div class="row-btns">
+        <button class="stake-mode-btn active" id="mtfOn" onclick="setMtfEnabled(true)" style="flex:1;">เปิดใช้งาน</button>
+        <button class="stake-mode-btn" id="mtfOff" onclick="setMtfEnabled(false)" style="flex:1;">ปิด</button>
+      </div>
+      <div class="ctrl-field" style="margin-top:8px;">
+        <label for="mtf-higher-select">🔭 เลือก Timeframe ใหญ่ที่ใช้คุม (กำหนดเอง)</label>
+        <select class="deriv-select" id="mtf-higher-select" onchange="changeMtfHigherTf()">
+          <option value="300">M5</option>
+          <option value="900" selected>M15 (ค่าแนะนำสำหรับ entry M1)</option>
+          <option value="1800">M30</option>
+          <option value="3600">H1</option>
+          <option value="14400">H4</option>
+        </select>
+      </div>
+      <div class="row-btns">
+        <button class="stake-mode-btn active" id="mtfSoftOn" onclick="setMtfSoftMode(true)" style="flex:1;">Soft (ผ่าน Sideways)</button>
+        <button class="stake-mode-btn" id="mtfSoftOff" onclick="setMtfSoftMode(false)" style="flex:1;">Strict (Block Sideways)</button>
+      </div>
+      <div class="filter-info" id="mtfInfo" style="margin-top:8px; border-left-color: var(--blue);">
+        หาแนวรับ/แนวต้าน + เทรนด์จาก TF ใหญ่ (<b id="mtfHigherLabel">M15</b>) แล้วให้สัญญาณ TF เล็ก (<b id="mtfLowerLabel">M1</b>) ผ่านได้เฉพาะตอนทะลุแนวรับ/ต้าน <u>พร้อมอยู่ฝั่งเดียวกับเทรนด์ TF ใหญ่</u> เท่านั้น — ถ้าขัดกันจะ BLOCK สัญญาณนั้นทิ้ง
+      </div>
+    </div>
+
+    <div class="sec" style="background: rgba(0,230,118,0.02);">
+      <div class="sec-title" style="color: var(--green)">🔔 การแจ้งเตือนเมื่อมี Pop-up ยืนยัน</div>
+      <div class="row-btns">
+        <button class="stake-mode-btn active" id="soundOn" onclick="setSoundEnabled(true)" style="flex:1;">เสียงเปิด</button>
+        <button class="stake-mode-btn" id="soundOff" onclick="setSoundEnabled(false)" style="flex:1;">เสียงปิด</button>
+      </div>
+      <div class="ctrl-field" style="margin-top:8px;">
+        <label for="telegram-token-input">Telegram Bot Token</label>
+        <input type="password" class="deriv-input" id="telegram-token-input" placeholder="เช่น 123456789:AAH...">
+      </div>
+      <div class="ctrl-field">
+        <label for="telegram-chatid-input">Telegram Chat ID</label>
+        <input type="text" class="deriv-input" id="telegram-chatid-input" placeholder="เช่น 987654321">
+      </div>
+      <button class="deriv-btn" onclick="saveTelegramSettings()">บันทึก + ทดสอบส่งข้อความ</button>
+      <div class="filter-info" id="telegramStatus" style="margin-top:8px; border-left-color: var(--green);">
+        ยังไม่ได้ตั้งค่า Telegram — กรอก Token และ Chat ID แล้วกดบันทึกเพื่อรับการแจ้งเตือนตอนมี Pop-up ยืนยันคำสั่ง (แจ้งเตือนอย่างเดียว ไม่สามารถสั่งเทรดผ่าน Telegram ได้)
+      </div>
+    </div>
+
+    <div class="stats-bar">
+      <div class="sstat"><div class="sstat-n" id="stTotal">0</div><div class="sstat-l">สแกน</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--green)" id="stSignal">0</div><div class="sstat-l">สัญญาณ</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--orange)" id="stFiltered">0</div><div class="sstat-l">กรองออก</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--blue)" id="stRate">-</div><div class="sstat-l">Signal%</div></div>
+    </div>
+
+    <div class="sec" style="flex:1; padding:10px 0 0;">
+      <div class="sec-title" style="padding-left:16px;">ตารางสแกนสัญญาณสด (คลิกชื่อสัญลักษณ์ที่มีจุดสีเพื่อเปิดกราฟ)</div>
+      <div class="signal-wrap">
+        <table class="sig-table">
+          <thead><tr><th>สินทรัพย์</th><th>ราคา</th><th>MTF</th><th>สัญญาณ</th><th>Score</th><th>ดำเนินการ</th></tr></thead>
+          <tbody id="sigTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="history-panel">
+      <div class="history-hdr">
+        <span class="history-title">ประวัติสัญญาณที่เคยเกิดขึ้น (เซสชันนี้)</span>
+        <button class="history-rst" onclick="resetHistory()">ล้างประวัติ</button>
+      </div>
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>เวลา</th><th>คู่เงิน</th><th>ทิศทาง</th><th>Score</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="4" class="log-empty">ยังไม่มีสัญญาณเกิดขึ้น</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="history-panel">
+      <div class="history-hdr">
+        <span class="history-title">บันทึกออเดอร์ที่คุณยืนยันส่งไปแล้ว</span>
+        <button class="history-rst" onclick="resetTradeLog()">ล้างประวัติ</button>
+      </div>
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>เวลา</th><th>คู่เงิน</th><th>ทิศทาง</th><th>เดิมพัน</th><th>ผล</th></tr></thead>
+          <tbody id="tradeLogBody"><tr><td colspan="5" class="log-empty">ยังไม่มีออเดอร์ที่ยืนยันส่ง</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="disclaimer">⚠️ ทุกออเดอร์ต้องกดยืนยันในหน้าต่าง Pop-up ก่อนส่งเข้าระบบเสมอ ไม่มีการยิงคำสั่งอัตโนมัติ การเทรดมีความเสี่ยง ผู้ใช้รับผิดชอบผลลัพธ์ด้วยตนเอง</div>
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+      <span class="spin-ic">&#8635;</span><span id="refreshLbl">คัดกรองรอบใหม่</span>
+    </button>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h3 id="confirmTitle">ยืนยันคำสั่งซื้อขาย</h3>
+    <div class="confirm-row"><span>สินทรัพย์</span><b id="cf-asset">—</b></div>
+    <div class="confirm-row"><span>ทิศทาง</span><b id="cf-dir">—</b></div>
+    <div class="confirm-row"><span>เงินเดิมพัน</span><b id="cf-stake">—</b></div>
+    <div class="confirm-row"><span>ระยะเวลาสัญญา</span><b id="cf-duration">—</b></div>
+    <div class="confirm-row"><span>โหมดเดิมพัน</span><b id="cf-mode">—</b></div>
+    <div class="confirm-actions">
+      <button class="confirm-cancel" onclick="closeConfirm()">ยกเลิก</button>
+      <button class="confirm-go" onclick="confirmAndSendOrder()">ยืนยันส่งออเดอร์</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let tf = '15', filterLevel = 'normal', chartFocus = 'R_75';
+let ws = null;
+let atrSpaceMultiplier = 1.5;
+
+// ---- Deriv connection state ----
+let apiToken = '';
+let isAuthorized = false;
+let accountMode = 'demo';
+
+// ---- Stake mode state (used only to CALCULATE the suggested amount; never auto-fires) ----
+let stakeMode = 'fixed';        // 'fixed' | 'martingale'
+let fixedStake = 1.0;
+let martingaleMultiplier = 2.0;
+let allowedMaxSteps = 5;
+let martingaleBaseStake = 1.0;
+let martingaleStepCount = 0;    // advances on loss, resets on win — display/calc only
+
+// ---- Order awaiting your confirmation in the modal ----
+let pendingOrder = null;        // {symbol, dir, stake, durationMinutes}
+let activeProposalReqId = null;
+
+// Tracks which symbols currently have a live (unfiltered) buy/sell signal,
+// and a history log of every signal that has appeared this session.
+let activeSignals = {};      // key -> {dir, score, price}
+let signalHistory = [];      // [{time, asset, dir, score}]
+const SEEN_KEY = 'tve_seen_signal_ids';
+let seenSignalStamps = new Set();
+
+let tradeLog = [];            // orders YOU confirmed: [{time, asset, dir, stake, result, contractId}]
+
+// ---- Multi-Timeframe confirmation ----
+// Maps the entry TF (left column, what 'tf' already controls) to a DEFAULT higher TF
+// used only to find support/resistance + trend direction for confirmation.
+// granularity values are in seconds (Deriv API format).
+// The user can override the higher TF manually via the #mtf-higher-select dropdown
+// (see mtfHigherGranularity / mtfHigherLabelOverride below) — the map below is only
+// the starting default shown when you switch the entry TF.
+const MTF_MAP = {
+  '15':  { higherGranularity: 900,  higherLabel: 'M15' }, // entry M1  -> higher M15 (default)
+  '60':  { higherGranularity: 3600, higherLabel: 'H1'  }, // entry M5  -> higher H1 (default)
+  '240': { higherGranularity: 14400, higherLabel: 'H4' }  // entry M15 -> higher H4 (default)
+};
+const TF_GRAN_LABELS = { 300: 'M5', 900: 'M15', 1800: 'M30', 3600: 'H1', 14400: 'H4' };
+let mtfEnabled = true;
+let mtfSoftMode = true;     // true = sideways/flat on higher TF is ALLOWED (not blocked), just scored lower
+let mtfHigherGranularity = 900;   // currently selected higher-TF granularity (seconds) — user-editable
+let mtfHigherLabelOverride = 'M15';
+let higherTfCache = {};   // key -> { resistance, support, trend: 'up'|'down'|'flat', label }
+
+// ---- Notifications: sound + Telegram (alert-only, no trade execution from Telegram) ----
+let soundEnabled = true;
+let telegramBotToken = '';
+let telegramChatId = '';
+let audioCtx = null;
+
+const ASSETS = {
+  R_10: { tv: "DERIV:10", sym: "R_10", active: true, name: "Volatility 10", dp: 3 },
+  R_25: { tv: "DERIV:25", sym: "R_25", active: true, name: "Volatility 25", dp: 3 },
+  R_50: { tv: "DERIV:50", sym: "R_50", active: true, name: "Volatility 50", dp: 4 },
+  R_75: { tv: "DERIV:75", sym: "R_75", active: true, name: "Volatility 75", dp: 4 },
+  R_100: { tv: "DERIV:100", sym: "R_100", active: false, name: "Volatility 100", dp: 2 },
+  "1HZ75V": { tv: "DERIV:751S", sym: "1HZ75V", active: false, name: "Vol 75 (1s)", dp: 4 },
+  "1HZ100V": { tv: "DERIV:1001S", sym: "1HZ100V", active: false, name: "Vol 100 (1s)", dp: 2 },
+  R_150: { tv: "DERIV:150", sym: "R_150", active: false, name: "Volatility 150", dp: 4 }
+};
+
+const FILTERS = {
+  loose: { rsiLo: 25, rsiHi: 75, bodyMin: 0.3, atrMin: 0.0002, macdConfirm: false, desc: '<b>LOOSE:</b> แท่งเทียนทะลุกรอบ Donchian ขอบนอก + EMA' },
+  normal: { rsiLo: 35, rsiHi: 65, bodyMin: 0.45, atrMin: 0.0005, macdConfirm: true, desc: '<b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน' },
+  tight: { rsiLo: 40, rsiHi: 60, bodyMin: 0.55, atrMin: 0.0008, macdConfirm: true, desc: '<b>TIGHT:</b> คัดกรองกรอบแคบพิเศษ + แท่งยืนยันคู่สองรอบ' },
+};
+
+// ---------- Deriv connection (manual connect; NO auto-orders anywhere) ----------
+function connectDerivPort() {
+  const token = document.getElementById('deriv-token-input').value.trim();
+  if (!token) { alert('กรุณาใส่ API Token ของ Deriv ก่อนเชื่อมต่อครับ'); return; }
+  apiToken = token;
+  accountMode = document.getElementById('deriv-mode-select').value;
+  initFeed();
+}
+
+function disconnectDerivPort() {
+  if (confirm('ต้องการสลับบัญชี/ตัดการเชื่อมต่อพอร์ตหลักใช่ไหมครับ?')) {
+    if (ws) ws.close();
+    apiToken = ''; isAuthorized = false;
+    document.getElementById('deriv-gate-inputs').style.display = 'flex';
+    document.getElementById('deriv-info-display').style.display = 'none';
+    document.getElementById('deriv-status').textContent = 'DISCONNECTED';
+  }
+}
+
+function initFeed() {
+  if (ws) { try { ws.close(); } catch (e) {} }
+  ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+
+  ws.onopen = () => {
+    if (apiToken) {
+      document.getElementById('deriv-status').textContent = 'CONNECTING...';
+      ws.send(JSON.stringify({ authorize: apiToken }));
+    } else {
+      document.getElementById('deriv-status').textContent = 'SCANNING (PUBLIC FEED)';
+      runScanner();
+    }
+  };
+
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
+
+    if (data.msg_type === 'authorize') {
+      if (data.error) {
+        alert(`Token ผิดพลาด: ${data.error.message}`);
+        ws.close();
+      } else {
+        isAuthorized = true;
+        document.getElementById('deriv-status').textContent = accountMode.toUpperCase() + ' 🟢';
+        document.getElementById('deriv-gate-inputs').style.display = 'none';
+        document.getElementById('deriv-info-display').style.display = 'flex';
+        document.getElementById('d-acc-email').textContent = data.authorize.email;
+        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+        runScanner();
+      }
+    }
+
+    if (data.msg_type === 'balance' && !data.error && data.balance) {
+      document.getElementById('d-acc-balance').textContent =
+        `$${parseFloat(data.balance.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+    }
+
+    // Proposal/buy only ever fire as a DIRECT RESULT of confirmAndSendOrder() below —
+    // never from the scanner loop.
+    if (data.msg_type === 'proposal') {
+      if (data.error) {
+        alert('ไม่สามารถสร้างคำสั่งได้: ' + data.error.message);
+      } else if (data.proposal && data.req_id === activeProposalReqId) {
+        ws.send(JSON.stringify({ buy: data.proposal.id, price: data.proposal.ask_price }));
+      }
+    }
+
+    if (data.msg_type === 'buy') {
+      if (data.error) {
+        alert('ส่งคำสั่งไม่สำเร็จ: ' + data.error.message);
+      } else {
+        const buyInfo = data.buy;
+        recordTradeContract(buyInfo.contract_id);
+        ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: buyInfo.contract_id, subscribe: 1 }));
+      }
+    }
+
+    if (data.msg_type === 'proposal_open_contract' && data.proposal_open_contract) {
+      const poc = data.proposal_open_contract;
+      if (poc.is_expired || poc.status !== 'open') {
+        ws.send(JSON.stringify({ forget: poc.id }));
+        resolveTradeContract(poc.contract_id, poc.status);
+      }
+    }
+
+    if (data.msg_type === 'ticks_history' && data.candles && data.echo_req.ticks_history) {
+      const key = data.echo_req.ticks_history;
+      const reqId = data.echo_req.req_id || '';
+      if (reqId.startsWith('mtf-')) {
+        processHigherTfCandles(key, data.candles);
+      } else {
+        processAssetAnalysis(key, data.candles);
+      }
+    }
+  };
+
+  ws.onclose = () => { document.getElementById('deriv-status').textContent = 'DISCONNECTED'; isAuthorized = false; };
+}
+
+function updateAtrSettings() {
+  atrSpaceMultiplier = parseFloat(document.getElementById('atr-space-select').value);
+}
+
+// ---------- Stake mode: calculates the SUGGESTED stake only. ----------
+// martingaleStepCount changes only after YOU confirm a trade and it resolves —
+// nothing here sends an order or runs without your click.
+function setStakeMode(mode) {
+  stakeMode = mode;
+  document.getElementById('stakeModeFixed').classList.toggle('active', mode === 'fixed');
+  document.getElementById('stakeModeMartingale').classList.toggle('active', mode === 'martingale');
+  document.getElementById('martingaleBox').classList.toggle('show', mode === 'martingale');
+  updateStakeSettings();
+}
+
+function updateStakeSettings() {
+  fixedStake = parseFloat(document.getElementById('fixed-stake-input').value) || 1.0;
+  martingaleMultiplier = parseFloat(document.getElementById('m-multiplier-select').value);
+  allowedMaxSteps = parseInt(document.getElementById('m-max-steps-select').value);
+  martingaleBaseStake = parseFloat(document.getElementById('m-base-stake-input').value) || 1.0;
+  renderNextStakeReadout();
+}
+
+function calcSuggestedStake() {
+  if (stakeMode === 'fixed') return fixedStake;
+  return parseFloat((martingaleBaseStake * Math.pow(martingaleMultiplier, martingaleStepCount)).toFixed(2));
+}
+
+function renderNextStakeReadout() {
+  if (stakeMode !== 'martingale') return;
+  document.getElementById('nextStakeAmt').textContent = `$${calcSuggestedStake().toFixed(2)}`;
+  document.getElementById('nextStakeMeta').textContent =
+    `ไม้ที่ ${martingaleStepCount + 1} / ${allowedMaxSteps} · จะรีเซ็ตเป็นไม้แรกเมื่อชนะ`;
+}
+
+// ---------- Indicators (unchanged math) ----------
+function calcEMA(arr, p) { const k = 2 / (p + 1); let e = arr[0]; for (let i = 1; i < arr.length; i++) e = arr[i] * k + e * (1 - k); return e; }
+function calcEMASeries(arr, p) { const k = 2 / (p + 1); const out = [arr[0]]; for (let i = 1; i < arr.length; i++) out.push(arr[i] * k + out[i - 1] * (1 - k)); return out; }
+function calcRSI(prices, p = 14) {
+  if (prices.length < p + 1) return 50;
+  let g = 0, l = 0;
+  for (let i = prices.length - p; i < prices.length; i++) { const d = prices[i] - prices[i - 1]; if (d > 0) g += d; else l += Math.abs(d); }
+  const ag = g / p, al = l / p; if (al === 0) return 100; return 100 - (100 / (1 + ag / al));
+}
+function calcMACD(prices) {
+  const e12 = calcEMASeries(prices, 12), e26 = calcEMASeries(prices, 26);
+  const ml = e12.map((v, i) => v - e26[i]); const sig = calcEMASeries(ml, 9);
+  return { hist: ml.map((v, i) => v - sig[i]) };
+}
+function calcBB(prices, p = 20, mult = 2) {
+  const sl = prices.slice(-p); const mean = sl.reduce((a, b) => a + b, 0) / p;
+  const sd = Math.sqrt(sl.reduce((a, b) => a + (b - mean) ** 2, 0) / p);
+  return { upper: mean + mult * sd, mid: mean, lower: mean - mult * sd };
+}
+function calcATR(candles, p = 14) {
+  const trs = [];
+  for (let i = 1; i < candles.length; i++) {
+    const h = parseFloat(candles[i].high), l = parseFloat(candles[i].low), pc = parseFloat(candles[i - 1].close);
+    trs.push(Math.max(h - l, Math.abs(h - pc), Math.abs(l - pc)));
+  }
+  return trs.slice(-p).reduce((a, b) => a + b, 0) / p;
+}
+
+// ---------- Higher-TF (MTF) support/resistance + trend, used as a confirmation filter only ----------
+// Does NOT generate its own buy/sell signal — it only confirms or blocks the
+// entry-TF signal already found by processAssetAnalysis().
+function processHigherTfCandles(key, candles) {
+  if (!candles || candles.length < 40) return;
+  const closes = candles.map(c => parseFloat(c.close));
+
+  const lookback = candles.slice(-32, -2);
+  const highs = lookback.map(b => parseFloat(b.high));
+  const lows = lookback.map(b => parseFloat(b.low));
+  const resistance = Math.max(...highs);
+  const support = Math.min(...lows);
+
+  const ema9 = calcEMA(closes, 9), ema21 = calcEMA(closes, 21);
+  let trend = 'flat';
+  if (ema9 > ema21) trend = 'up';
+  else if (ema9 < ema21) trend = 'down';
+
+  higherTfCache[key] = {
+    resistance, support, trend,
+    label: mtfHigherLabelOverride
+  };
+}
+
+// ---------- Same signal logic as before, display-only outcome ----------
+function processAssetAnalysis(key, candles) {
+  if (!candles || candles.length < 60) return;
+
+  const cfg = FILTERS[filterLevel];
+  const closes = candles.map(c => parseFloat(c.close));
+  const cur = closes[closes.length - 1];
+
+  const ema9 = calcEMA(closes, 9), ema21 = calcEMA(closes, 21), ema50 = calcEMA(closes, 50);
+
+  const lookbackBars = candles.slice(-32, -2);
+  const highs = lookbackBars.map(b => parseFloat(b.high));
+  const lows = lookbackBars.map(b => parseFloat(b.low));
+  const dynamicResistance = Math.max(...highs);
+  const dynamicSupport = Math.min(...lows);
+
+  let rawDir = 'hold';
+  if (cur > dynamicResistance && cur > ema50 && ema9 > ema21) rawDir = 'buy';
+  if (cur < dynamicSupport && cur < ema50 && ema9 < ema21) rawDir = 'sell';
+
+  let score = 40;
+  let filtered = false;
+  let reason = 'ยืนยันพื้นที่วิ่งราคาเคลียร์ปลอดภัย';
+  let mtfInfo = null; // for display: { label, trend, resistance, support, soft }
+  let isNewSignal = false;
+
+  if (rawDir === 'hold') {
+    reason = 'สะสมพลังในกรอบ Donchian';
+  } else {
+    // ---- MTF confirmation: requires breakout direction to agree with the higher-TF trend ----
+    // Strict mode (mtfSoftMode = false): flat counts as disagreement, same as before.
+    // Soft mode (mtfSoftMode = true, default): flat is allowed through (not blocked),
+    // it just doesn't earn the MTF confirmation score bonus — only an outright
+    // opposite trend (up vs PUT, down vs CALL) gets blocked.
+    const htf = higherTfCache[key];
+    if (mtfEnabled && (MTF_MAP[tf] || mtfHigherGranularity)) {
+      if (!htf) {
+        filtered = true;
+        reason = `MTF: รอข้อมูล ${mtfHigherLabelOverride} โหลดอยู่`;
+      } else {
+        mtfInfo = { label: htf.label, trend: htf.trend, resistance: htf.resistance, support: htf.support, soft: mtfSoftMode };
+        const opposesBuy = (rawDir === 'buy' && htf.trend === 'down');
+        const opposesSell = (rawDir === 'sell' && htf.trend === 'up');
+        const notAlignedBuy = (rawDir === 'buy' && htf.trend !== 'up');   // covers down + flat
+        const notAlignedSell = (rawDir === 'sell' && htf.trend !== 'down'); // covers up + flat
+
+        if (mtfSoftMode) {
+          // Soft: only block on a direct opposite-trend conflict.
+          if (opposesBuy) {
+            filtered = true;
+            reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็นขาลง ขัดกับ CALL`;
+          } else if (opposesSell) {
+            filtered = true;
+            reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็นขาขึ้น ขัดกับ PUT`;
+          }
+          // flat (sideways) on the higher TF falls through here un-blocked.
+        } else {
+          // Strict (old behavior): flat also blocks.
+          if (notAlignedBuy) {
+            filtered = true;
+            reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็น${htf.trend === 'down' ? 'ขาลง' : 'ไซด์เวย์'} ขัดกับ CALL`;
+          } else if (notAlignedSell) {
+            filtered = true;
+            reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็น${htf.trend === 'up' ? 'ขาขึ้น' : 'ไซด์เวย์'} ขัดกับ PUT`;
+          }
+        }
+      }
+    }
+
+    const atr = calcATR(candles, 14);
+    const bb = calcBB(closes, 20, 2);
+    const requiredBuffer = atr * atrSpaceMultiplier;
+
+    if (!filtered && rawDir === 'buy') {
+      const distanceToCeiling = bb.upper - cur;
+      if (distanceToCeiling < requiredBuffer) {
+        filtered = true;
+        reason = `BLOCK: ใกล้ต้านบน (พื้นที่วิ่ง ${(distanceToCeiling / atr).toFixed(1)}x ATR)`;
+      }
+    } else if (!filtered && rawDir === 'sell') {
+      const distanceToFloor = cur - bb.lower;
+      if (distanceToFloor < requiredBuffer) {
+        filtered = true;
+        reason = `BLOCK: ใกล้รับล่าง (พื้นที่วิ่ง ${(distanceToFloor / atr).toFixed(1)}x ATR)`;
+      }
+    }
+
+    const rsi = calcRSI(closes, 14);
+    if (!filtered && !((rawDir === 'buy' && rsi > cfg.rsiLo && rsi < cfg.rsiHi) || (rawDir === 'sell' && rsi < cfg.rsiHi && rsi > cfg.rsiLo))) {
+      filtered = true; reason = `RSI ${rsi.toFixed(0)} ขัดแย้งกรอบ`;
+    }
+    const { hist } = calcMACD(closes);
+    if (!filtered && cfg.macdConfirm && hist[hist.length - 1] * hist[hist.length - 2] < 0) {
+      filtered = true; reason = 'MACD ไซด์เวย์บีบตัว';
+    }
+
+    if (rawDir === 'buy' && cur > ema9) score += 20;
+    if (rawDir === 'sell' && cur < ema9) score += 20;
+    // MTF score bonus: full bonus only when the higher-TF trend actively agrees.
+    // A flat/sideways higher TF that was allowed through by soft mode gets a
+    // smaller bonus instead of the full one, so the score visibly reflects
+    // that the higher-TF confirmation was weaker (not a true trend agreement).
+    if (!filtered && mtfInfo) {
+      const trendActivelyAgrees = (rawDir === 'buy' && mtfInfo.trend === 'up') || (rawDir === 'sell' && mtfInfo.trend === 'down');
+      score += trendActivelyAgrees ? 15 : 6;
+    }
+    score = Math.min(100, score);
+  }
+
+  // Record active signal state for the badge/dot + history log.
+  // No order is placed anywhere in this function.
+  if (rawDir !== 'hold' && !filtered) {
+    const wasAlreadyActive = !!activeSignals[key];
+    activeSignals[key] = { dir: rawDir, score, price: cur };
+    isNewSignal = !wasAlreadyActive;
+    logSignalIfNew(key, rawDir, score);
+  } else {
+    delete activeSignals[key];
+  }
+
+  updateRowUI(key, cur, rawDir, score, filtered, reason, candles, mtfInfo);
+  updateAssetButtonBadge(key);
+}
+
+// ---------- History log: only records the *first* time a signal appears per cooldown window ----------
+function loadSeen() {
+  try { return new Set(JSON.parse(sessionStorage.getItem(SEEN_KEY) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function saveSeen() { sessionStorage.setItem(SEEN_KEY, JSON.stringify([...seenSignalStamps])); }
+
+function logSignalIfNew(key, dir, score) {
+  // stamp changes every 5 minutes per symbol+direction so re-appearing signals get logged again,
+  // but a signal that's still "on" from the last scan tick doesn't spam the log every 12s.
+  const bucket = Math.floor(Date.now() / (5 * 60 * 1000));
+  const stamp = `${key}_${dir}_${bucket}`;
+  if (seenSignalStamps.has(stamp)) return;
+  seenSignalStamps.add(stamp);
+  saveSeen();
+
+  signalHistory.unshift({
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    asset: key,
+    dir,
+    score
+  });
+  signalHistory = signalHistory.slice(0, 30);
+  renderHistory();
+}
+
+function renderHistory() {
+  const tbody = document.getElementById('logBody');
+  if (!signalHistory.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="log-empty">ยังไม่มีสัญญาณเกิดขึ้น</td></tr>';
+    return;
+  }
+  tbody.innerHTML = signalHistory.map(e => {
+    const dirHtml = e.dir === 'buy' ? '<span class="d-call">CALL</span>' : '<span class="d-put">PUT</span>';
+    return `<tr><td>${e.time}</td><td>${ASSETS[e.asset] ? ASSETS[e.asset].name : e.asset}</td><td>${dirHtml}</td><td>${e.score}</td></tr>`;
+  }).join('');
+}
+
+window.resetHistory = function () {
+  signalHistory = [];
+  seenSignalStamps = new Set();
+  sessionStorage.removeItem(SEEN_KEY);
+  renderHistory();
+};
+
+// ---------- Asset grid badge: green/red dot on the picker buttons that have a live signal ----------
+function updateAssetButtonBadge(key) {
+  const btn = document.getElementById(`asset-${key}`);
+  if (!btn) return;
+  const sig = activeSignals[key];
+  btn.classList.toggle('has-signal', !!sig);
+  btn.classList.toggle('is-sell', !!(sig && sig.dir === 'sell'));
+}
+
+// ---------- Row UI ----------
+function updateRowUI(key, price, dir, score, filtered, reason, candles, mtfInfo) {
+  const a = ASSETS[key];
+  const dp = a.dp;
+  const pFmt = price.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
+
+  let badge = `<span class="dir-badge hold">WAIT</span>`;
+  if (filtered) badge = `<span class="dir-badge filtered">BLOCK</span>`;
+  else if (dir === 'buy') badge = `<span class="dir-badge buy">CALL</span>`;
+  else if (dir === 'sell') badge = `<span class="dir-badge sell">PUT</span>`;
+
+  const pricesSub = candles.slice(-12).map(c => parseFloat(c.close));
+  const mn = Math.min(...pricesSub), mx = Math.max(...pricesSub), range = mx - mn || 1;
+  const pts = pricesSub.map((p, i) => `${(i / 11) * 42},${14 - ((p - mn) / range) * 14}`).join(' ');
+  const col = dir === 'buy' ? '#00e676' : dir === 'sell' ? '#ff4455' : '#555570';
+  const sparkHtml = `<svg class="spark" width="42" height="14" viewBox="0 0 42 14"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`;
+
+  const scoreHtml = (dir !== 'hold') ? `<div class="score-wrap"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${score}%;background:var(--gold)"></div></div><span class="score-num">${score}</span></div>` : '—';
+
+  const hasLiveSignal = !filtered && dir !== 'hold';
+  const dotClass = !hasLiveSignal ? 'none' : (dir === 'buy' ? 'buy' : 'sell');
+  const focusedClass = (chartFocus === key) ? 'focused' : '';
+
+  // MTF trend badge: shows the higher-TF trend that confirmed (or didn't) this signal.
+  // A flat trend that was allowed through by soft mode is marked with a dim "~" so
+  // you can tell it was a soft-pass, not an actively-agreeing trend.
+  let mtfHtml = '<span style="color:var(--muted);font-size:9px;">—</span>';
+  const htfRef = mtfInfo || higherTfCache[key];
+  if (mtfEnabled && htfRef) {
+    const trendArrow = htfRef.trend === 'up' ? '▲' : (htfRef.trend === 'down' ? '▼' : '~');
+    const trendColor = htfRef.trend === 'up' ? 'var(--green)' : (htfRef.trend === 'down' ? 'var(--red)' : 'var(--orange)');
+    const srTitle = `${htfRef.label} R:${htfRef.resistance ? htfRef.resistance.toFixed(a.dp) : '-'} S:${htfRef.support ? htfRef.support.toFixed(a.dp) : '-'}`;
+    mtfHtml = `<span style="color:${trendColor};font-family:'Space Mono',monospace;font-size:9px;font-weight:700;" title="${srTitle}">${htfRef.label} ${trendArrow}</span>`;
+  }
+
+  const rowId = `row-${key}`;
+  let tr = document.getElementById(rowId);
+  if (!tr) {
+    tr = document.createElement('tr'); tr.id = rowId;
+    document.getElementById('sigTableBody').appendChild(tr);
+  }
+  tr.classList.toggle('is-signaled', hasLiveSignal);
+
+  let actionHtml = '—';
+  if (hasLiveSignal) {
+    const btnClass = dir === 'buy' ? 'call' : 'put';
+    const btnLabel = dir === 'buy' ? 'CALL' : 'PUT';
+    const disabledAttr = isAuthorized ? '' : 'disabled title="เชื่อมต่อ API ก่อนถึงจะส่งคำสั่งได้"';
+    actionHtml = `<button class="trade-cell-btn ${btnClass}" ${disabledAttr} onclick="openConfirm('${key}','${dir}')">${btnLabel}</button>`;
+  }
+
+  tr.innerHTML = `<td><span class="sym-cell ${focusedClass}" onclick="switchChart('${key}')" title="${reason}"><span class="signal-dot ${dotClass}"></span>${a.name}</span></td>
+    <td><b>${pFmt}</b>${sparkHtml}</td>
+    <td>${mtfHtml}</td>
+    <td title="${reason}">${badge}</td>
+    <td>${scoreHtml}</td>
+    <td>${actionHtml}</td>`;
+}
+
+// ---------- MTF settings: enable/disable, soft/strict mode, manual higher-TF selection ----------
+function setMtfEnabled(on) {
+  mtfEnabled = on;
+  document.getElementById('mtfOn').classList.toggle('active', on);
+  document.getElementById('mtfOff').classList.toggle('active', !on);
+  if (!on) higherTfCache = {};
+  runScanner();
+}
+
+function setMtfSoftMode(on) {
+  mtfSoftMode = on;
+  document.getElementById('mtfSoftOn').classList.toggle('active', on);
+  document.getElementById('mtfSoftOff').classList.toggle('active', !on);
+  updateMtfInfoText();
+  runScanner();
+}
+
+function changeMtfHigherTf() {
+  const sel = document.getElementById('mtf-higher-select');
+  mtfHigherGranularity = parseInt(sel.value);
+  mtfHigherLabelOverride = TF_GRAN_LABELS[mtfHigherGranularity] || sel.options[sel.selectedIndex].text;
+  higherTfCache = {}; // old higher-TF data no longer matches the new pairing
+  document.getElementById('mtfHigherLabel').textContent = mtfHigherLabelOverride;
+  updateMtfInfoText();
+  runScanner();
+}
+
+function updateMtfInfoText() {
+  const softText = mtfSoftMode
+    ? `เปิดทาง — ถ้า TF ใหญ่ <b>ไซด์เวย์ (flat)</b> สัญญาณยังผ่านได้ (แค่ได้คะแนนยืนยันน้อยกว่า) จะ <u>BLOCK เฉพาะตอนเทรนด์ TF ใหญ่วิ่งสวนทางจริงๆ</u> เท่านั้น`
+    : `เข้มงวด — ถ้า TF ใหญ่ไม่ใช่เทรนด์ที่ตรงกับสัญญาณแบบชัดเจน (รวมถึงไซด์เวย์) จะ <u>BLOCK ทันที</u>`;
+  document.getElementById('mtfInfo').innerHTML =
+    `หาแนวรับ/แนวต้าน + เทรนด์จาก TF ใหญ่ (<b id="mtfHigherLabel">${mtfHigherLabelOverride}</b>) แล้วให้สัญญาณ TF เล็ก (<b id="mtfLowerLabel">${TF_LOWER_LABEL[tf] || '-'}</b>) ผ่านตามโหมด: ${softText}`;
+}
+
+// ---------- Manual trade confirmation flow ----------
+// openConfirm() only shows a modal with the order details. The order is sent
+// ONLY when you click "ยืนยันส่งออเดอร์" inside confirmAndSendOrder().
+function openConfirm(symbol, dir) {
+  if (!isAuthorized) { alert('กรุณาเชื่อมต่อ Deriv API ก่อนส่งคำสั่งครับ'); return; }
+  const stake = calcSuggestedStake();
+  const durationMinutes = (tf === '15') ? 3 : (tf === '60' ? 15 : 45);
+  pendingOrder = { symbol, dir, stake, durationMinutes };
+
+  document.getElementById('cf-asset').textContent = ASSETS[symbol].name;
+  document.getElementById('cf-dir').textContent = dir === 'buy' ? 'CALL (RISE)' : 'PUT (FALL)';
+  document.getElementById('cf-stake').textContent = `$${stake.toFixed(2)}`;
+  document.getElementById('cf-duration').textContent = `${durationMinutes} นาที`;
+  document.getElementById('cf-mode').textContent = stakeMode === 'fixed'
+    ? 'Fixed คงที่'
+    : `Martingale (ไม้ที่ ${martingaleStepCount + 1}/${allowedMaxSteps})`;
+
+  document.getElementById('confirmOverlay').classList.add('show');
+
+  // Alert the user that a confirmation pop-up is waiting — sound + optional Telegram.
+  // Neither of these sends or confirms the order; they only notify YOU to go look at it.
+  playAlertSound();
+  sendTelegramAlert(symbol, dir, stake, durationMinutes);
+}
+
+function closeConfirm() {
+  pendingOrder = null;
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+
+function confirmAndSendOrder() {
+  if (!pendingOrder || !ws || ws.readyState !== WebSocket.OPEN) { closeConfirm(); return; }
+  const { symbol, dir, stake, durationMinutes } = pendingOrder;
+  const contractType = dir === 'buy' ? 'RISE' : 'FALL';
+
+  activeProposalReqId = 'req-' + Date.now();
+  ws.send(JSON.stringify({
+    proposal: 1,
+    amount: stake,
+    basis: 'stake',
+    contract_type: contractType,
+    currency: 'USD',
+    duration: durationMinutes,
+    duration_unit: 'm',
+    symbol: symbol,
+    req_id: activeProposalReqId
+  }));
+
+  logConfirmedTrade(symbol, dir, stake);
+  closeConfirm();
+}
+
+function recordTradeContract(contractId) {
+  const last = tradeLog[0];
+  if (last && last.contractId === null) last.contractId = contractId;
+}
+
+function resolveTradeContract(contractId, status) {
+  const entry = tradeLog.find(e => e.contractId === contractId);
+  if (!entry) return;
+  const isWin = (status === 'won');
+  entry.result = isWin ? 'win' : 'lose';
+
+  // Martingale step count adjusts for the NEXT suggested stake display only —
+  // it never triggers a new order by itself.
+  if (stakeMode === 'martingale') {
+    if (isWin) martingaleStepCount = 0;
+    else { martingaleStepCount++; if (martingaleStepCount >= allowedMaxSteps) martingaleStepCount = 0; }
+    renderNextStakeReadout();
+  }
+  renderTradeLog();
+}
+
+function logConfirmedTrade(symbol, dir, stake) {
+  tradeLog.unshift({
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    asset: symbol, dir, stake, result: 'pending', contractId: null
+  });
+  tradeLog = tradeLog.slice(0, 25);
+  renderTradeLog();
+}
+
+function renderTradeLog() {
+  const tbody = document.getElementById('tradeLogBody');
+  if (!tradeLog.length) { tbody.innerHTML = '<tr><td colspan="5" class="log-empty">ยังไม่มีออเดอร์ที่ยืนยันส่ง</td></tr>'; return; }
+  tbody.innerHTML = tradeLog.map(e => {
+    const dirHtml = e.dir === 'buy' ? '<span class="d-call">CALL</span>' : '<span class="d-put">PUT</span>';
+    const resHtml = e.result === 'pending' ? '<span class="r-pend">RUNNING</span>' : (e.result === 'win' ? '<span class="r-win">WIN</span>' : '<span class="r-lose">LOSE</span>');
+    return `<tr><td>${e.time}</td><td>${ASSETS[e.asset] ? ASSETS[e.asset].name : e.asset}</td><td>${dirHtml}</td><td>$${e.stake.toFixed(2)}</td><td>${resHtml}</td></tr>`;
+  }).join('');
+}
+
+window.resetTradeLog = function () { tradeLog = []; renderTradeLog(); };
+
+// ---------- Notifications: sound (Web Audio beep, no asset file needed) ----------
+function setSoundEnabled(on) {
+  soundEnabled = on;
+  document.getElementById('soundOn').classList.toggle('active', on);
+  document.getElementById('soundOff').classList.toggle('active', !on);
+}
+
+function playAlertSound() {
+  if (!soundEnabled) return;
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const now = audioCtx.currentTime;
+    // Two short beeps so it's noticeable but not alarming.
+    [0, 0.18].forEach(offset => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, now + offset);
+      gain.gain.setValueAtTime(0.0001, now + offset);
+      gain.gain.exponentialRampToValueAtTime(0.25, now + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.16);
+      osc.connect(gain).connect(audioCtx.destination);
+      osc.start(now + offset);
+      osc.stop(now + offset + 0.2);
+    });
+  } catch (e) { /* audio not available in this context — silently skip */ }
+}
+
+// ---------- Notifications: Telegram (alert-only — never used to confirm/send a trade) ----------
+function saveTelegramSettings() {
+  telegramBotToken = document.getElementById('telegram-token-input').value.trim();
+  telegramChatId = document.getElementById('telegram-chatid-input').value.trim();
+  const statusEl = document.getElementById('telegramStatus');
+
+  if (!telegramBotToken || !telegramChatId) {
+    statusEl.innerHTML = 'กรุณากรอกทั้ง Token และ Chat ID ก่อนบันทึกครับ';
+    return;
+  }
+
+  statusEl.innerHTML = 'กำลังทดสอบส่งข้อความ...';
+  sendTelegramRaw('✅ ตั้งค่าแจ้งเตือนสำเร็จ — บอทนี้จะส่งข้อความหาคุณทุกครั้งที่มี Pop-up รอยืนยันคำสั่ง (แจ้งเตือนอย่างเดียว ไม่สั่งเทรดจาก Telegram)')
+    .then(ok => {
+      statusEl.innerHTML = ok
+        ? 'เชื่อมต่อ Telegram สำเร็จ ✅ — จะได้รับข้อความทุกครั้งที่มี Pop-up ยืนยันคำสั่ง'
+        : 'ส่งข้อความทดสอบไม่สำเร็จ ❌ — เช็ค Token/Chat ID อีกครั้ง (ดู console สำหรับรายละเอียด error)';
+    });
+}
+
+async function sendTelegramRaw(text) {
+  if (!telegramBotToken || !telegramChatId) return false;
+  try {
+    const url = `https://api.telegram.org/bot${telegramBotToken}/sendMessage`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: telegramChatId, text, parse_mode: 'HTML' })
+    });
+    const data = await res.json();
+    return !!data.ok;
+  } catch (e) {
+    console.error('Telegram send error:', e);
+    return false;
+  }
+}
+
+function sendTelegramAlert(symbol, dir, stake, durationMinutes) {
+  if (!telegramBotToken || !telegramChatId) return; // not configured — skip silently
+  const dirLabel = dir === 'buy' ? 'CALL (RISE) 🟢' : 'PUT (FALL) 🔴';
+  const text = `🔔 <b>มี Pop-up รอยืนยันคำสั่ง</b>\n` +
+    `สินทรัพย์: <b>${ASSETS[symbol].name}</b>\n` +
+    `ทิศทาง: <b>${dirLabel}</b>\n` +
+    `เดิมพันที่แนะนำ: <b>$${stake.toFixed(2)}</b>\n` +
+    `ระยะเวลา: <b>${durationMinutes} นาที</b>\n` +
+    `⚠️ ต้องกดยืนยันในหน้าแอปเองเท่านั้น ข้อความนี้เป็นการแจ้งเตือน ไม่ใช่การส่งคำสั่ง`;
+  sendTelegramRaw(text);
+}
+
+// ---------- Scan loop: requests candle history only, never places orders ----------
+async function runScanner() {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+  const activeKeys = Object.entries(ASSETS).filter(([, a]) => a.active).map(([k]) => k);
+  const granularityMap = { '15': 60, '60': 300, '240': 900 };
+  const sec = granularityMap[tf];
+
+  Object.keys(ASSETS).forEach(k => {
+    if (!ASSETS[k].active) {
+      const el = document.getElementById(`row-${k}`);
+      if (el) el.remove();
+      delete activeSignals[k];
+      const btn = document.getElementById(`asset-${k}`);
+      if (btn) { btn.classList.remove('has-signal', 'is-sell'); }
+    }
+  });
+
+  activeKeys.forEach(key => {
+    ws.send(JSON.stringify({
+      ticks_history: key,
+      adjust_start_time: 1,
+      count: 100,
+      end: "latest",
+      granularity: sec,
+      style: "candles"
+    }));
+
+    // Higher-timeframe candles for MTF support/resistance + trend confirmation.
+    // Uses the user-selected higher-TF granularity (mtfHigherGranularity), not a
+    // fixed mapping — falls back to the MTF_MAP default the first time the entry
+    // TF changes (see changeTF()).
+    // Tagged with a 'mtf-' req_id prefix so the response handler can tell it
+    // apart from the entry-TF request above (Deriv echoes req_id back to us).
+    if (mtfEnabled && mtfHigherGranularity) {
+      ws.send(JSON.stringify({
+        ticks_history: key,
+        adjust_start_time: 1,
+        count: 100,
+        end: "latest",
+        granularity: mtfHigherGranularity,
+        style: "candles",
+        req_id: `mtf-${key}-${Date.now()}`
+      }));
+    }
+  });
+
+  setTimeout(() => {
+    const totalScan = activeKeys.length;
+    const totalSignals = Object.keys(activeSignals).length;
+    const tbody = document.getElementById('sigTableBody');
+    const totalFiltered = tbody.querySelectorAll('.filtered').length;
+
+    document.getElementById('stTotal').textContent = totalScan;
+    document.getElementById('stSignal').textContent = totalSignals;
+    document.getElementById('stFiltered').textContent = totalFiltered;
+    document.getElementById('stRate').textContent = totalScan > 0 ? `${Math.round(totalSignals / totalScan * 100)}%` : '-';
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('th-TH');
+  }, 800);
+}
+
+// ---------- Chart ----------
+function updateChart() {
+  if (typeof TradingView === 'undefined') {
+    // tv.js hasn't finished loading yet — retry shortly instead of failing silently.
+    setTimeout(updateChart, 300);
+    return;
+  }
+  const i = tf === '15' ? '1' : tf === '60' ? '5' : '15';
+  document.getElementById('tv_chart_container').innerHTML = '';
+  new TradingView.widget({
+    width: "100%", height: "100%", symbol: ASSETS[chartFocus].tv, interval: i,
+    timezone: "Asia/Bangkok", theme: "dark", style: "1", locale: "th",
+    container_id: "tv_chart_container",
+    studies: ["RSI@tv-basicstudies", "MACD@tv-basicstudies", "BB@tv-basicstudies"]
+  });
+}
+function switchChart(key) {
+  const prevFocus = chartFocus;
+  chartFocus = key;
+  document.getElementById('focusTitle').textContent = `${ASSETS[key].name}`;
+  updateChart();
+  // refresh focus highlight on rows without waiting for next scan
+  [prevFocus, key].forEach(k => {
+    const cell = document.querySelector(`#row-${k} .sym-cell`);
+    if (cell) cell.classList.toggle('focused', k === chartFocus);
+  });
+}
+window.toggleAsset = function (key) {
+  ASSETS[key].active = !ASSETS[key].active;
+  document.getElementById(`asset-${key}`).classList.toggle('active', ASSETS[key].active);
+  if (ASSETS[key].active) switchChart(key);
+  runScanner();
+};
+function changeTF(t) {
+  tf = t;
+  ['tf15', 'tf60', 'tf240'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(`tf${t}`).classList.add('active');
+
+  // When the entry TF changes, reset the higher-TF dropdown back to that TF's
+  // recommended default (user can still override it again afterwards).
+  const def = MTF_MAP[t];
+  if (def) {
+    mtfHigherGranularity = def.higherGranularity;
+    mtfHigherLabelOverride = def.higherLabel;
+    const sel = document.getElementById('mtf-higher-select');
+    if (sel) sel.value = String(def.higherGranularity);
+  }
+
+  higherTfCache = {}; // old higher-TF data no longer matches the new pairing
+  updateMtfLabels();
+  updateMtfInfoText();
+  updateChart(); runScanner();
+}
+
+const TF_LOWER_LABEL = { '15': 'M1', '60': 'M5', '240': 'M15' };
+function updateMtfLabels() {
+  document.getElementById('mtfHigherLabel').textContent = mtfHigherLabelOverride;
+  document.getElementById('mtfLowerLabel').textContent = TF_LOWER_LABEL[tf] || '-';
+}
+
+function setFilter(level) {
+  filterLevel = level;
+  ['fLoose', 'fNormal', 'fTight'].forEach(id => document.getElementById(id).classList.remove('active'));
+  const map = { loose: 'fLoose', normal: 'fNormal', tight: 'fTight' };
+  document.getElementById(map[level]).classList.add('active');
+  document.getElementById('filterInfo').innerHTML = FILTERS[level].desc;
+  runScanner();
+}
+window.manualRefresh = async function () {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  await runScanner();
+  setTimeout(() => btn.classList.remove('spinning'), 600);
+};
+
+// ---------- Boot ----------
+seenSignalStamps = loadSeen();
+updateChart();
+renderHistory();
+renderTradeLog();
+updateStakeSettings();
+updateMtfInfoText();
+initFeed();
+setInterval(runScanner, 12000);
+</script>
+</body>
+</html>
