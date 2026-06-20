@@ -666,7 +666,25 @@ function processAssetAnalysis(key, candles) {
     if (!filtered && mtfInfo) score += 15; // bonus for passing MTF confirmation
     score = Math.min(100, score);
   }
+score = Math.min(100, score);
+  }
 
+  // --- วางตรงนี้แหละครับ ---
+  if (rawDir !== 'hold' && !filtered) {
+    activeSignals[key] = { dir: rawDir, score, price: cur };
+    logSignalIfNew(key, rawDir, score);
+    
+    // โหมด AUTO: ถ้าเปิดอยู่และคะแนนถึงเป้า ให้ยิงทันที
+    if (execMode === 'auto' && score >= 85) { 
+      autoExecuteTrade(key, rawDir);
+    }
+  } else {
+    delete activeSignals[key];
+  }
+
+  updateRowUI(key, cur, rawDir, score, filtered, reason, candles, mtfInfo);
+  updateAssetButtonBadge(key);
+}
   // Record active signal state for the badge/dot + history log.
   // No order is placed anywhere in this function.
   if (rawDir !== 'hold' && !filtered) {
