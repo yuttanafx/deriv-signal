@@ -141,6 +141,17 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
 </style>
 <script src="https://s3.tradingview.com/tv.js"></script>
 </head>
+  <!-- แผงสวิตช์เลือกโหมดวางไว้ใต้ Header -->
+<div style="padding: 10px 20px; background: #0f0f16; border-bottom: 1px solid #1c1c2a; display: flex; align-items: center; gap: 15px;">
+  <div style="font-size: 10px; color: #7070a0; font-family: 'Space Mono', monospace;">EXECUTION MODE:</div>
+  <div class="row-btns" style="margin: 0;">
+    <button class="rbtn active" id="modeManual" onclick="setExecMode('manual')">✋ MANUAL</button>
+    <button class="rbtn" id="modeAuto" onclick="setExecMode('auto')" style="color:#ff4455; border-color:#ff4455;">🤖 AUTO-TRADE</button>
+  </div>
+  <div id="auto-warning" style="display:none; font-size:9px; color:#ff4455; font-family:'Space Mono',monospace;">
+    ● ระบบ Auto-Trade เปิดใช้งานอยู่ (ยิงทันที)
+  </div>
+</div>
 <body>
 <div class="header">
   <div class="logo">◈ TVE OPTIONS MATRIX <small>Signal Scanner · Manual-Confirm Trading Only</small></div>
