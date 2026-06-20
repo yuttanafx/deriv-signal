@@ -646,9 +646,24 @@ async function runScanner(){
   document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('th-TH');
 }
 
-function updateChart(){
-  const i = tf==='15'?'1':tf==='60'?'5':'15';
-  new TradingView.widget({width:"100%",height:"100%",symbol:ASSETS[chartFocus].tv,interval:i,timezone:"Asia/Bangkok",theme:"dark",style:"1",locale:"th",container_id:"tv_chart_container",studies:["RSI@tv-basicstudies","MACD@tv-basicstudies","BB@tv-basicstudies"]});
+function updateChart() {
+    // เพิ่มการตรวจสอบว่า TradingView พร้อมหรือยัง
+    if (typeof TradingView === 'undefined') {
+        console.log("TradingView กำลังโหลด... รอ 500ms");
+        setTimeout(updateChart, 500); 
+        return;
+    }
+    
+    // โค้ดเดิมของคุณยศธนะ
+    new TradingView.widget({
+        width: "100%", height: "100%",
+        symbol: ASSETS[chartFocus].tv,
+        interval: tf==='15'?'1':'5',
+        timezone: "Asia/Bangkok",
+        theme: "dark",
+        container_id: "tv_chart_container",
+        studies: ["RSI@tv-basicstudies","MACD@tv-basicstudies","BB@tv-basicstudies"]
+    });
 }
 function switchChart(key){chartFocus=key;document.getElementById('focusTitle').textContent=`${ASSETS[key].name}`;updateChart();}
 window.toggleAsset=function(key){ASSETS[key].active=!ASSETS[key].active;document.getElementById(`asset-${key}`).classList.toggle('active',ASSETS[key].active);switchChart(key);runScanner();};
