@@ -1,1166 +1,678 @@
 <!DOCTYPE html>
 <html lang="th">
-<head>
+<head> 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terravolteco — Market Structure Terminal (Rise/Fall Fixed)</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>TVE Options Matrix · Deriv Pro Engine v3</title>
 <style>
-  :root {
-    --bg:        #0a0c11;
-    --panel:     #11141c;
-    --line:      #232838;
-    --line-soft: #1a1e2a;
-    --ink:       #c8cfdc;
-    --ink-dim:   #6b7384;
-    --ink-bright:#eef1f7;
-    --accent:    #5eead4;
-    --buy:       #34d399;
-    --sell:      #f87171;
-    --block:     #fbbf24;
-    --mono: 'IBM Plex Mono', monospace;
-    --sans: 'Inter', sans-serif;
-  }
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#08080d;--panel:#0f0f16;--panel2:#14141e;--border:#1c1c2a;
+  --gold:#f5c842;--gold-dim:rgba(245,200,66,0.10);
+  --green:#00e676;--green-dim:rgba(0,230,118,0.10);
+  --red:#ff4455;--red-dim:rgba(255,68,85,0.10);
+  --blue:#4fc3f7;--blue-dim:rgba(79,195,247,0.10);
+  --orange:#ff9800;--orange-dim:rgba(255,152,0,0.10);
+  --muted:#44445a;--text:#e0e0ee;--text2:#7070a0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel);gap:12px;}
+.logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.logo small{color:var(--text2);font-size:10px;font-weight:400;margin-left:6px;}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.live-badge{display:flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid rgba(0,230,118,0.25);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--green);font-family:'Space Mono',monospace;}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.5s ease-in-out infinite;}
+#lastUpdate{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.layout{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 49px);}
+@media(max-width:900px){.layout{grid-template-columns:1fr;height:auto;}}
+.left{display:flex;flex-direction:column;overflow:hidden;background:#000;}
+.chart-container-tv{flex:1;width:100%;min-height:420px;}
+.price-bar{padding:14px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--panel),var(--bg));}
+.price-label{font-size:9px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:3px;}
+.price-title{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);}
+.price-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+.sidebar{border-left:1px solid var(--border);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border);}
+.sec-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:10px;}
+.asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.asset-btn{padding:8px 10px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s;}
+.asset-btn .tbadge{font-size:7px;background:var(--bg);padding:2px 4px;border-radius:3px;color:var(--muted);}
+.asset-btn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.asset-btn.active .tbadge{background:var(--gold);color:var(--bg);}
+.row-btns{display:flex;gap:5px;margin-bottom:8px;}
+.rbtn{flex:1;padding:7px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;transition:all 0.15s;text-align:center;}
+.rbtn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.rbtn.fl-loose.active{background:var(--orange-dim);border-color:rgba(255,152,0,0.4);color:var(--orange);}
+.rbtn.fl-tight.active{background:var(--green-dim);border-color:rgba(0,230,118,0.4);color:var(--green);}
+.filter-info{padding:7px 9px;background:var(--panel2);border-radius:5px;font-size:9px;color:var(--text2);font-family:'Space Mono',monospace;border-left:2px solid var(--blue);line-height:1.6;}
+.signal-wrap{position:relative;overflow:hidden;border-radius:8px;}
+.lock-overlay{position:absolute;inset:0;background:rgba(8,8,13,0.97);border:1px dashed rgba(245,200,66,0.3);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;padding:20px;text-align:center;backdrop-filter:blur(4px);transition:opacity 0.4s;}
+.tve-wrap{position:relative;width:110px;height:110px;margin-bottom:8px;}
+.ring-a{position:absolute;inset:0;border-radius:50%;border:1.5px solid transparent;border-top-color:var(--gold);border-right-color:rgba(245,200,66,0.2);animation:spinCW 3s linear infinite;}
+.ring-b{position:absolute;inset:10px;border-radius:50%;border:1px solid transparent;border-bottom-color:var(--blue);border-left-color:rgba(79,195,247,0.15);animation:spinCCW 2s linear infinite;}
+.ring-c{position:absolute;inset:20px;border-radius:50%;border:1px solid rgba(245,200,66,0.08);animation:breathe 3s ease-in-out infinite;}
+.orbit{position:absolute;top:50%;left:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px 3px rgba(245,200,66,0.6);animation:orbitG 3s linear infinite;}
+.tve-hex{position:absolute;inset:26px;filter:drop-shadow(0 0 6px rgba(245,200,66,0.4));animation:breathe 3s ease-in-out infinite alternate;}
+.tve-lbl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--gold);letter-spacing:3px;text-shadow:0 0 10px rgba(245,200,66,0.7);}
+@keyframes spinCW{to{transform:rotate(360deg)}}
+@keyframes spinCCW{to{transform:rotate(-360deg)}}
+@keyframes breathe{0%,100%{opacity:.4;transform:scale(.95)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes orbitG{from{transform:rotate(0deg) translateX(46px) rotate(0deg)}to{transform:rotate(360deg) translateX(46px) rotate(-360deg)}}
+.lock-title{font-size:12px;font-weight:700;color:var(--gold);font-family:'Space Mono',monospace;margin-bottom:3px;}
+.lock-desc{font-size:10px;color:var(--text2);margin-bottom:12px;}
+.lock-row{display:flex;gap:5px;width:100%;max-width:220px;}
+.lock-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-family:'Space Mono',monospace;font-size:12px;outline:none;text-align:center;}
+.lock-input:focus{border-color:var(--gold);}
+.lock-ok{background:var(--gold);color:var(--bg);border:none;padding:7px 12px;font-size:11px;font-weight:700;border-radius:5px;cursor:pointer;}
+.lock-err{color:var(--red);font-size:10px;margin-top:6px;font-family:'Space Mono',monospace;display:none;}
+.welcome{font-size:10px;color:var(--green);font-family:'Space Mono',monospace;padding:6px 16px;text-align:center;display:none;}
 
-  [data-theme="light"] {
-    --bg:        #f3f4f6;
-    --panel:     #ffffff;
-    --line:      #e5e7eb;
-    --line-soft: #f9fafb;
-    --ink:       #374151;
-    --ink-dim:   #9ca3af;
-    --ink-bright:#111827;
-    --accent:    #0d9488;
-  }
+/* Deriv Gateway Section */
+.deriv-panel { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.deriv-select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; }
+.deriv-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 6px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; }
+.deriv-btn { background: var(--gold); color: var(--bg); border: none; padding: 7px; border-radius: 4px; font-weight: 700; font-size: 11px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+.deriv-logout { background: rgba(255,68,85,0.15); border: 1px solid rgba(255,68,85,0.3); color: var(--red); padding: 6px; border-radius: 4px; font-size: 10px; cursor: pointer; text-align: center; font-weight: 600; }
 
-  *{ box-sizing:border-box; }
-  html{ -webkit-tap-highlight-color: transparent; }
-
-  body{
-    margin:0;
-    background:
-      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(94,234,212,0.05), transparent 60%),
-      var(--bg);
-    color:var(--ink);
-    font-family:var(--sans);
-    padding:18px 14px 40px;
-    min-height:100vh;
-    transition: background 0.3s, color 0.3s;
-  }
-
-  .wrap{ max-width:780px; margin:0 auto; }
-
-  header{
-    display:flex;
-    justify-content:space-between;
-    align-items:flex-end;
-    padding-bottom:16px;
-    margin-bottom:18px;
-    border-bottom:1px solid var(--line);
-  }
-  .brand{ display:flex; flex-direction:column; gap:4px; }
-  .brand .mark{
-    font-family:var(--mono);
-    font-size:11px;
-    letter-spacing:.18em;
-    color:var(--accent);
-    text-transform:uppercase;
-  }
-  .brand h1{
-    margin:0;
-    font-size:19px;
-    font-weight:600;
-    color:var(--ink-bright);
-    letter-spacing:-0.01em;
-  }
-  
-  .header-controls {
-    display: flex;
-    align-items:center;
-    gap: 16px;
-  }
-
-  .theme-toggle-btn {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    color: var(--ink-bright);
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 16px;
-    transition: background 0.2s, border-color 0.2s;
-  }
-  .theme-toggle-btn:hover { border-color: var(--accent); }
-
-  .conn{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    font-family:var(--mono);
-    font-size:11px;
-    color:var(--ink-dim);
-  }
-  .dot{
-    width:7px; height:7px; border-radius:50%;
-    background:var(--sell);
-    box-shadow:0 0 0 3px rgba(248,113,113,0.15);
-    transition:background .3s, box-shadow .3s;
-  }
-  .dot.live{
-    background:var(--buy);
-    box-shadow:0 0 0 3px rgba(52,211,153,0.15);
-    animation:pulse 2s ease-in-out infinite;
-  }
-  @keyframes pulse{
-    0%,100%{ opacity:1; }
-    50%{ opacity:.45; }
-  }
-
-  .api-panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 18px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    align-items: center;
-    justify-content: space-between;
-  }
-  .api-input-group {
-    display: flex;
-    gap: 8px;
-    flex: 1;
-    min-width: 280px;
-  }
-  .api-input {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    color: var(--ink-bright);
-    padding: 10px 12px;
-    border-radius: 6px;
-    font-family: var(--mono);
-    font-size: 13px;
-    flex: 1;
-    outline: none;
-  }
-  .api-input:focus { border-color: var(--accent); }
-  
-  .account-mode-select {
-    background: var(--bg);
-    color: var(--ink-bright);
-    border: 1px solid var(--line);
-    padding: 10px;
-    border-radius: 6px;
-    font-family: var(--sans);
-    font-size: 13px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  .api-btn {
-    background: var(--accent);
-    color: #000;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-    font-family: var(--sans);
-  }
-  .api-btn:active { transform: scale(0.98); }
-  
-  .disconnect-btn {
-    background: rgba(248, 113, 113, 0.15);
-    color: var(--sell);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    font-family: var(--sans);
-    transition: all 0.2s;
-  }
-  .disconnect-btn:hover {
-    background: var(--sell);
-    color: #fff;
-  }
-
-  .account-info {
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--ink-dim);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    align-items: center;
-    flex: 1;
-    justify-content: space-between;
-  }
-  .account-meta-group {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .badge-mode {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-  }
-  .badge-mode.demo { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid #3b82f6; }
-  .badge-mode.real { background: rgba(16, 185, 129, 0.15); color: var(--buy); border: 1px solid var(--buy); }
-  .balance-val { color: var(--buy); font-weight: 700; }
-
-  .section-label{
-    font-family:var(--mono);
-    font-size:10px;
-    letter-spacing:.14em;
-    text-transform:uppercase;
-    color:var(--ink-dim);
-    margin:0 0 10px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-  }
-
-  .watchlist-picker{
-    display:flex;
-    flex-wrap:wrap;
-    gap:7px;
-    margin-bottom:20px;
-  }
-  .chip{
-    font-family:var(--mono);
-    font-size:12px;
-    padding:8px 12px;
-    border-radius:7px;
-    border:1px solid var(--line);
-    background:var(--panel);
-    color:var(--ink-dim);
-    cursor:pointer;
-    user-select:none;
-  }
-  .chip.active{
-    border-color:var(--accent);
-    color:var(--ink-bright);
-    background:rgba(94,234,212,0.08);
-  }
-
-  .watch-grid{
-    display:grid;
-    grid-template-columns:1fr;
-    gap:8px;
-    margin-bottom:20px;
-  }
-  .watch-card{
-    background:var(--panel);
-    border:1px solid var(--line);
-    border-radius:9px;
-    padding:12px 14px;
-    cursor:pointer;
-  }
-  .watch-card.focused{ border-color:var(--accent); }
-  .wc-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
-  .wc-name{ font-family:var(--mono); font-size:12px; font-weight:600; color:var(--ink-bright); }
-  .wc-badge{ font-family:var(--mono); font-size:10px; font-weight:700; padding:3px 8px; border-radius:5px; text-transform:uppercase; }
-  .wc-badge.neutral{ background:rgba(255,255,255,0.05); color:var(--ink-dim); }
-  .wc-badge.buy{ background:rgba(52,211,153,0.12); color:var(--buy); }
-  .wc-badge.sell{ background:rgba(248,113,113,0.12); color:var(--sell); }
-  .wc-badge.block{ background:rgba(251,191,36,0.12); color:var(--block); }
-  .wc-mid{ display:flex; align-items:center; gap:12px; }
-  .wc-price{ font-family:var(--mono); font-size:17px; font-weight:600; color:var(--ink-bright); font-variant-numeric: tabular-nums; }
-  .wc-spark-wrap{ flex:1; height:28px; }
-  .wc-spark-wrap svg{ width:100%; height:100%; display:block; }
-  .wc-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:9px; padding-top:9px; border-top:1px solid var(--line-soft); font-family:var(--mono); font-size:11px; color:var(--ink-dim); }
-  .wc-wr-val.good{ color:var(--buy); font-weight:600; }
-  .wc-wr-val.bad{ color:var(--sell); font-weight:600; }
-  .watch-empty{ text-align:center; padding:30px 16px; color:var(--ink-dim); font-size:13px; border:1px dashed var(--line); border-radius:9px; }
-
-  .focus-label{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-  .focus-label .fl-tag{ font-family:var(--mono); font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-dim); }
-  .focus-label .fl-name{ font-family:var(--mono); font-size:13px; color:var(--accent); font-weight:600; }
-
-  .hero{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px 18px 0; margin-bottom:14px; overflow:hidden; position:relative; }
-  .hero-top{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px; }
-  .hero-label{ font-family:var(--mono); font-size:10px; color:var(--ink-dim); text-transform:uppercase; }
-  .hero-asset{ font-family:var(--mono); font-size:11px; color:var(--ink-dim); }
-  .price-row{ display:flex; align-items:baseline; gap:10px; margin-bottom:8px; }
-  .price-value{ font-family:var(--mono); font-size:38px; font-weight:600; color:var(--ink-bright); font-variant-numeric: tabular-nums; }
-  .price-delta{ font-family:var(--mono); font-size:13px; font-weight:500; padding:2px 7px; border-radius:4px; }
-  .price-delta.up{ color:var(--buy); background:rgba(52,211,153,0.1); }
-  .price-delta.down{ color:var(--sell); background:rgba(248,113,113,0.1); }
-  .price-delta.flat{ color:var(--ink-dim); background:rgba(255,255,255,0.04); }
-
-  .spark-wrap{ margin:0 -18px; height:64px; position:relative; }
-  svg.spark{ width:100%; height:100%; display:block; }
-  .spark-fill{ opacity:.14; }
-
-  .sr-rail{ display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--line); margin-top:14px; }
-  .sr-cell{ padding:12px 18px 14px; font-family:var(--mono); }
-  .sr-cell + .sr-cell{ border-left:1px solid var(--line); }
-  .sr-cell .sr-label{ font-size:10px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:4px; display:flex; align-items:center; gap:6px; }
-  .sr-cell .sr-label::before{ content:''; width:6px; height:6px; border-radius:1px; }
-  .sr-cell.res .sr-label::before{ background:var(--sell); }
-  .sr-cell.sup .sr-label::before{ background:var(--buy); }
-  .sr-cell .sr-val{ font-size:18px; font-weight:600; color:var(--ink-bright); }
-
-  .controls{ margin-bottom:14px; }
-  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .field{ display:flex; flex-direction:column; gap:6px; }
-  .field label{ font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); }
-  select{ appearance:none; background:var(--panel); color:var(--ink-bright); border:1px solid var(--line); padding:11px 36px 11px 12px; border-radius:6px; font-family:var(--mono); font-size:13px; outline:none; width:100%; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7384' stroke-width='1.4' fill='none'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 14px center; }
-
-  .signal{ border:1px solid var(--line); border-radius:10px; padding:20px; text-align:center; margin-bottom:14px; }
-  .signal .sig-eyebrow{ font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:8px; }
-  .signal .sig-text{ font-family:var(--mono); font-size:21px; font-weight:700; }
-  .signal .sig-sub{ margin-top:6px; font-size:12.5px; color:var(--ink-dim); }
-  .signal.neutral{ background:var(--panel); }
-  .signal.neutral .sig-text{ color:var(--ink-dim); }
-  .signal.buy{ background:rgba(52,211,153,0.06); border-color:rgba(52,211,153,0.35); }
-  .signal.buy .sig-text{ color:var(--buy); }
-  .signal.sell{ background:rgba(248,113,113,0.06); border-color:rgba(248,113,113,0.35); }
-  .signal.sell .sig-text{ color:var(--sell); }
-  .signal.block{ background:rgba(251,191,36,0.06); border-color:rgba(251,191,36,0.35); }
-  .signal.block .sig-text{ color:var(--block); font-size:16px; }
-
-  .track-panel{ border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin-bottom:14px; background:var(--panel); }
-  .track-head{ display:flex; justify-content:space-between; align-items:center; font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); margin-bottom:14px; }
-  .track-stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
-  .track-stat{ display:flex; flex-direction:column; gap:4px; text-align:center; padding:8px 4px; border-radius:6px; background:rgba(255,255,255,0.02); }
-  [data-theme="light"] .track-stat { background: rgba(0, 0, 0, 0.03); }
-  .ts-label{ font-family:var(--mono); font-size:9.5px; text-transform:uppercase; color:var(--ink-dim); }
-  .ts-label.win{ color:var(--buy); }
-  .ts-label.loss{ color:var(--sell); }
-  .ts-val{ font-family:var(--mono); font-size:18px; font-weight:700; color:var(--ink-bright); font-variant-numeric: tabular-nums; }
-  .ts-val.win{ color:var(--buy); }
-  .ts-val.loss{ color:var(--sell); }
-  .ts-val.pending{ color:var(--block); font-size:16px; }
-  .track-bar{ height:6px; border-radius:3px; background:rgba(248,113,113,0.25); overflow:hidden; margin-bottom:14px; }
-  .tb-fill{ height:100%; background:var(--buy); border-radius:3px; transition:width .4s ease; }
-
-  .track-list{ list-style:none; margin:0; padding:0; max-height:150px; overflow-y:auto; }
-  .track-list li{ display:flex; align-items:center; gap:10px; padding:7px 4px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:11.5px; }
-  .track-list li.empty{ color:var(--ink-dim); justify-content:center; }
-  .tl-result{ width:18px; height:18px; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
-  .tl-result.win{ background:rgba(52,211,153,0.15); color:var(--buy); }
-  .tl-result.loss{ background:rgba(248,113,113,0.15); color:var(--sell); }
-  .tl-dir{ color:var(--ink-dim); width:34px; flex-shrink:0; }
-  .tl-dir.buy{ color:var(--buy); }
-  .tl-dir.sell{ color:var(--sell); }
-  .tl-prices{ color:var(--ink-dim); flex:1; }
-  .tl-time{ color:var(--ink-dim); font-size:10.5px; flex-shrink:0; }
-
-  .combined-banner{ display:flex; justify-content:space-between; align-items:center; background:var(--line-soft); border:1px solid var(--line); border-radius:9px; padding:11px 16px; margin-bottom:14px; font-family:var(--mono); font-size:12px; }
-  .combined-banner .cb-label{ color:var(--ink-dim); }
-  .combined-banner .cb-val{ color:var(--ink-bright); font-weight:700; }
-
-  .disclosure{ display:flex; gap:10px; padding:13px 16px; border:1px solid var(--line); border-radius:8px; background:var(--line-soft); margin-bottom:14px; font-size:12px; line-height:1.55; color:var(--ink-dim); }
-  .disclosure .ic{ font-family:var(--mono); color:var(--block); flex-shrink:0; font-weight:700; }
-  .disclosure b{ color:var(--ink); font-weight:600; }
-
-  .log-panel{ border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .log-head{ padding:12px 16px; border-bottom:1px solid var(--line); font-family:var(--mono); font-size:10px; text-transform:uppercase; color:var(--ink-dim); background:var(--panel); }
-  .log-list{ list-style:none; margin:0; padding:0; max-height:200px; overflow-y:auto; background:#0d1018; }
-  [data-theme="light"] .log-list { background: #f9fafb; }
-  .log-list li{ padding:9px 16px; border-bottom:1px solid var(--line-soft); font-family:var(--mono); font-size:11.5px; color:var(--ink-dim); line-height:1.5; }
-  .log-list li:first-child{ color:var(--ink); }
-  [data-theme="light"] .log-list li:first-child { color: var(--ink-bright); }
-  .log-list::-webkit-scrollbar{ width:6px; }
-  .log-list::-webkit-scrollbar-thumb{ background:var(--line); border-radius:3px; }
+.stats-bar{display:flex;gap:0;background:var(--panel2);border-bottom:1px solid var(--border);}
+.sstat{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--border);}
+.sstat:last-child{border-right:none;}
+.sstat-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--gold);}
+.sstat-l{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;}
+.sig-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:10px;}
+.sig-table th{text-align:left;padding:5px 7px;color:var(--muted);border-bottom:1px solid var(--border);font-size:8px;text-transform:uppercase;}
+.sig-table td{padding:6px 7px;border-bottom:1px solid rgba(28,28,42,0.6);vertical-align:middle;}
+.sig-table tr:hover td{background:rgba(255,255,255,0.02);}
+.dir-badge{padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;display:inline-block;}
+.dir-badge.buy{background:var(--green-dim);color:var(--green);}
+.dir-badge.sell{background:var(--red-dim);color:var(--red);}
+.dir-badge.hold{background:var(--panel2);color:var(--text2);}
+.dir-badge.filtered{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,152,0,0.2);}
+.dir-badge.offline{background:var(--panel2);color:var(--muted);}
+.score-wrap{display:flex;align-items:center;gap:5px;}
+.score-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;min-width:36px;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
+.score-num{font-size:9px;font-weight:700;min-width:20px;text-align:right;}
+.spark{display:inline-block;vertical-align:middle;margin-left:3px;}
+.daily-panel{padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(245,200,66,0.03),transparent);}
+.daily-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.daily-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.daily-date{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);}
+.daily-rst{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);background:var(--red-dim);border:1px solid rgba(255,68,85,0.2);border-radius:3px;padding:2px 6px;cursor:pointer;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;}
+.kpi{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center;}
+.kpi-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;line-height:1;}
+.kpi-l{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-top:2px;}
+.kpi.total .kpi-n{color:var(--gold);}
+.kpi.win .kpi-n{color:var(--green);}
+.kpi.lose .kpi-n{color:var(--red);}
+.kpi.rate .kpi-n{color:var(--blue);}
+.wr-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.wr-fill{height:100%;border-radius:3px;transition:width 0.5s ease;}
+.log-wrap{max-height:120px;overflow-y:auto;}
+.log-wrap::-webkit-scrollbar{width:2px;}
+.log-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:9px;}
+.log-table th{color:var(--muted);padding:3px 4px;text-align:left;font-size:8px;border-bottom:1px solid var(--border);}
+.log-table td{padding:3px 4px;border-bottom:1px solid rgba(28,28,42,0.5);color:var(--text2);}
+.r-win{color:var(--green);font-weight:700;}
+.r-lose{color:var(--red);font-weight:700;}
+.r-pend{color:var(--gold);font-size:8px;}
+.d-call{color:var(--green);}
+.d-put{color:var(--red);}
+.log-empty{text-align:center;padding:14px;color:var(--muted);font-size:9px;}
+.tg-send-btn{margin-top:8px;width:100%;padding:7px;background:rgba(79,195,247,0.07);border:1px solid rgba(79,195,247,0.2);border-radius:5px;color:var(--blue);font-family:'Space Mono',monospace;font-size:9px;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.tg-send-btn:hover{background:rgba(79,195,247,0.15);}
+.auto-note{margin-top:4px;font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);text-align:center;}
+.refresh-btn{margin:12px 14px;padding:10px;background:var(--gold-dim);border:1px solid rgba(245,200,66,0.25);border-radius:7px;color:var(--gold);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;width:calc(100% - 28px);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.refresh-btn:hover{background:rgba(245,200,66,0.18);}
+.refresh-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.spin-ic{display:inline-block;}
+.refresh-btn.spinning .spin-ic{animation:spinCW 0.6s linear infinite;}
 </style>
+<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+const app = initializeApp({apiKey: "AIzaSyCLq0sx9CBR-SceGR0y61dE9iWmkBsGLck", authDomain: "option-tvesignal.firebaseapp.com", databaseURL: "https://option-tvesignal-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "option-tvesignal", storageBucket: "option-tvesignal.firebasestorage.app", messagingSenderId: "552322019865", appId: "1:552322019865:web:aa8ee5051de72361a9f088"});
+const db = getDatabase(app);
+window.checkUnlockCode = function(){
+  const val = document.getElementById('pwdInput').value.trim();
+  if(!val) return;
+  get(child(ref(db), `option_codes/${val}`)).then(snap=>{
+    if(snap.exists()){
+      window.isUnlocked = true;
+      const ov = document.getElementById('lockOverlay');
+      ov.style.opacity = '0'; setTimeout(()=>ov.style.display='none', 400);
+      const w = document.getElementById('welcomeUser');
+      w.textContent = `Options Premium: ${snap.val().customer_name}`;
+      w.style.display = 'block';
+      runScannerInit();
+    }else{ document.getElementById('lockErr').style.display='block'; }
+  }).catch(()=>alert("ไม่สามารถติดต่อเซิร์ฟเวอร์ได้"));
+};
+</script>
 </head>
 <body>
-
-<div class="wrap">
-
-  <header>
-    <div class="brand">
-      <span class="mark">Terravolteco</span>
-      <h1>Market Structure Terminal</h1>
-    </div>
-    
-    <div class="header-controls">
-      <button class="theme-toggle-btn" id="theme-toggle" title="สลับโหมด มืด/สว่าง">🌙</button>
-      <div class="conn">
-        <span class="dot" id="conn-dot"></span>
-        <span id="api-status">กำลังเชื่อมต่อ…</span>
-      </div>
-    </div>
-  </header>
-
-  <div class="api-panel">
-    <div class="api-input-group" id="api-gate-inputs">
-      <select class="account-mode-select" id="account-mode-select">
-        <option value="demo">🧪 บัญชีจำลอง (Demo)</option>
-        <option value="real">💰 บัญชีจริง (Real Account)</option>
-      </select>
-      <input type="password" class="api-input" id="api-token-input" placeholder="ใส่ Deriv API Token ของโหมดที่เลือก...">
-      <button class="api-btn" id="api-connect-btn">เชื่อมต่อพอร์ต</button>
-    </div>
-    
-    <div class="account-info" id="account-info-display" style="display: none;">
-      <div class="account-meta-group">
-        <span class="badge-mode demo" id="badge-account-mode">DEMO</span>
-        <span>ID: <b id="acc-email" style="color:var(--ink-bright)">—</b></span>
-        <span>Balance: <b class="balance-val" id="acc-balance">$0.00</b></span>
-      </div>
-      <button class="disconnect-btn" id="api-disconnect-btn">🔒 สลับบัญชี / Logout</button>
-    </div>
+<div class="header">
+  <div class="logo">◈ TVE OPTIONS MATRIX <small>Deriv Candle Engine v3 · Multi-Asset Single Lock Pool</small></div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="deriv-status">DISCONNECTED</span></div>
+    <div id="lastUpdate">—</div>
   </div>
-
-  <p class="section-label">เลือกสินทรัพย์ที่ติดตาม <small id="watch-count">0 รายการ</small></p>
-  <div class="watchlist-picker" id="watchlist-picker"></div>
-
-  <div class="combined-banner" id="combined-banner" style="display:none;">
-    <span class="cb-label">Win Rate รวมทุกสินทรัพย์</span>
-    <span class="cb-val" id="cb-winrate">—</span>
+</div>
+<div class="layout">
+  <div class="left">
+    <div class="price-bar">
+      <div class="price-label" id="global-lock-banner" style="color:var(--green)">PORT STATUS: READY 🟢</div>
+      <div class="price-title" id="focusTitle">R_75</div>
+      <div class="price-sub">Candle Analysis Scan · M1/M5/M15 Donchian Structure Channel · แชร์ยอดทบมาติงเกลพูลกลางร่วมกัน เทรดทีละ 1 ออเดอร์</div>
+    </div>
+    <div class="chart-container-tv" id="tv_chart_container"></div>
   </div>
-
-  <p class="section-label">รายการติดตาม (กดการ์ดเพื่อดูรายละเอียด)</p>
-  <div class="watch-grid" id="watch-grid">
-    <div class="watch-empty" id="watch-empty">ยังไม่ได้เลือกสินทรัพย์ — แตะชิปด้านบนเพื่อเริ่มติดตาม</div>
-  </div>
-
-  <div id="focus-section" style="display:none;">
-    <div class="focus-label">
-      <span class="fl-tag">กำลังดูรายละเอียด</span>
-      <span class="fl-name" id="fl-name">—</span>
-    </div>
-
-    <div class="controls">
-      <div class="controls-grid">
-        <div class="field">
-          <label for="duration-select">ระยะเวลาสัญญา (Expiry Duration)</label>
-          <select id="duration-select">
-            <option value="5_ticks" selected>5 Ticks (แนะนำความไวสูงสุด)</option>
-            <option value="10_ticks">10 Ticks</option>
-            <option value="5_min">5 นาที (Rise/Fall Mode)</option>
-            <option value="15_min">15 นาที (Rise/Fall Mode)</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="martingale-multiplier-select">📈 ตัวคูณเงินทบมาติงเกล (Multiplier)</label>
-          <select id="martingale-multiplier-select">
-            <option value="1.5">x1.5 (ทบแบบถนอมทุน ปลอดภัยสูง)</option>
-            <option value="2.0" selected>x2.0 (ทบแบบดับเบิ้ล มาตรฐานระบบ)</option>
-            <option value="2.5">x2.5 (ทบแบบดึงกำไรครอบคลุมพิเศษ)</option>
-            <option value="3.0">x3.0 (ทบบ้าระห่ำ ดึงทุนคืนไวสุด)</option>
-          </select>
-        </div>
-        <div class="field" style="grid-column: span 2; margin-top: 4px;">
-          <label for="max-steps-select">จำนวนไม้สูงสุด (Martingale Layer Limit)</label>
-          <select id="max-steps-select">
-            <option value="3">สูงสุด 3 ไม้ (เสี่ยงต่ำ)</option>
-            <option value="5" selected>สูงสุด 5 ไม้ (มาตรฐาน)</option>
-            <option value="7">สูงสุด 7 ไม้ (ทุนหนา)</option>
-            <option value="10">สูงสุด 10 ไม้ (เต็มระบบ)</option>
-          </select>
-        </div>
+  <div class="sidebar">
+    <!-- 🔒 Deriv Port Control Gateway -->
+    <div class="sec">
+      <div class="sec-title">แผงควบคุมพอร์ต DERIV (REALTIME GATEWAY)</div>
+      <div class="deriv-panel" id="deriv-gate-inputs">
+        <select class="deriv-select" id="deriv-mode-select">
+          <option value="demo">🧪 บัญชีจำลอง (Demo)</option>
+          <option value="real">💰 บัญชีจริง (Real Account)</option>
+        </select>
+        <input type="password" class="deriv-input" id="deriv-token-input" placeholder="ใส่ Deriv API Token...">
+        <button class="deriv-btn" onclick="connectDerivPort()">เชื่อมต่อ API Gateway</button>
+      </div>
+      <div class="deriv-panel" id="deriv-info-display" style="display:none;">
+        <div style="font-size:11px; font-family:'Space Mono'; color:var(--text)">ID: <b id="d-acc-email">—</b></div>
+        <div style="font-size:13px; font-family:'Space Mono'; color:var(--green)">Balance: <b id="d-acc-balance">$0.00</b></div>
+        <div style="font-size:11px; font-family:'Space Mono'; color:var(--gold)">ไม้ถัดไป (Pool): <b id="d-next-stake">$1.00</b></div>
+        <button class="deriv-logout" onclick="disconnectDerivPort()">🔒 สลับพอร์ต / ออกจากระบบ</button>
       </div>
     </div>
 
-    <div class="hero">
-      <div class="hero-top">
-        <span class="hero-label">Last Price</span>
-        <span class="hero-asset" id="hero-asset">—</span>
-      </div>
-      <div class="price-row">
-        <span class="price-value" id="current-price">0.00</span>
-        <span class="price-delta flat" id="price-delta">0.00%</span>
-      </div>
-      <div class="spark-wrap">
-        <svg class="spark" id="spark-svg" viewBox="0 0 600 64" preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#5eead4" stop-opacity="0.5"/>
-              <stop offset="100%" stop-color="#5eead4" stop-opacity="0"/>
-            </linearGradient>
-          </defs>
-          <polygon class="spark-fill" id="spark-fill" fill="url(#sparkGrad)" points=""></polygon>
-          <polyline id="spark-line" fill="none" stroke="#5eead4" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points=""></polyline>
-        </svg>
-      </div>
-      <div class="sr-rail">
-        <div class="sr-cell res">
-          <div class="sr-label">Resistance</div>
-          <div class="sr-val" id="res-price">0.00</div>
-        </div>
-        <div class="sr-cell sup">
-          <div class="sr-label">Support</div>
-          <div class="sr-val" id="sup-price">0.00</div>
-        </div>
+    <div class="sec">
+      <div class="sec-title">สินทรัพย์ที่ตรวจสัญญาณ (Deriv Synthetic)</div>
+      <div class="asset-grid">
+        <button class="asset-btn active" id="asset-R_10" onclick="toggleAsset('R_10')">Volatility 10 <span class="tbadge">R_10</span></button>
+        <button class="asset-btn active" id="asset-R_25" onclick="toggleAsset('R_25')">Volatility 25 <span class="tbadge">R_25</span></button>
+        <button class="asset-btn active" id="asset-R_50" onclick="toggleAsset('R_50')">Volatility 50 <span class="tbadge">R_50</span></button>
+        <button class="asset-btn active" id="asset-R_75" onclick="toggleAsset('R_75')">Volatility 75 <span class="tbadge">R_75</span></button>
+        <button class="asset-btn" id="asset-R_100" onclick="toggleAsset('R_100')">Volatility 100 <span class="tbadge">R_100</span></button>
+        <button class="asset-btn" id="asset-1HZ75V" onclick="toggleAsset('1HZ75V')">Vol 75 (1s) <span class="tbadge">1HZ75V</span></button>
+        <button class="asset-btn" id="asset-1HZ100V" onclick="toggleAsset('1HZ100V')">Vol 100 (1s) <span class="tbadge">1HZ100V</span></button>
+        <button class="asset-btn" id="asset-R_150" onclick="toggleAsset('R_150')">Volatility 150 <span class="tbadge">R_150</span></button>
       </div>
     </div>
-
-    <div class="signal neutral" id="signal-output">
-      <div class="sig-eyebrow">Signal</div>
-      <div class="sig-text" id="sig-text">กำลังวิเคราะห์โครงสร้างราคา…</div>
-      <div class="sig-sub" id="sig-sub">รอข้อมูล tick เพื่อคำนวณกรอบราคา</div>
+    <div class="sec">
+      <div class="sec-title">โครงสร้างแท่งเทียน / สัญญานาทีหมดอายุ</div>
+      <div class="row-btns">
+        <button class="rbtn active" id="tf15" onclick="changeTF('15')">1 MIN (แท่ง M1)</button>
+        <button class="rbtn" id="tf60" onclick="changeTF('60')">5 MIN (แท่ง M5)</button>
+        <button class="rbtn" id="tf240" onclick="changeTF('240')">15 MIN (แท่ง M15)</button>
+      </div>
+      <div class="sec-title" style="margin-top:8px;">ระดับฟิลเตอร์กรองความเสี่ยง</div>
+      <div class="row-btns">
+        <button class="rbtn fl-loose" id="fLoose" onclick="setFilter('loose')">LOOSE</button>
+        <button class="rbtn active" id="fNormal" onclick="setFilter('normal')">NORMAL</button>
+        <button class="rbtn fl-tight" id="fTight" onclick="setFilter('tight')">TIGHT</button>
+      </div>
+      <div class="filter-info" id="filterInfo"><b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR+Vol x1.1</div>
     </div>
-
-    <div class="track-panel">
-      <div class="track-head">
-        <span>Track Record — บัญชีเชื่อมต่อ</span>
-        <span id="track-count">0 สัญญาณ</span>
-      </div>
-      <div class="track-stats">
-        <div class="track-stat">
-          <span class="ts-label">Win Rate</span>
-          <span class="ts-val" id="ts-winrate">—</span>
-        </div>
-        <div class="track-stat">
-          <span class="ts-label win">ถูก</span>
-          <span class="ts-val win" id="ts-wins">0</span>
-        </div>
-        <div class="track-stat">
-          <span class="ts-label loss">ผิด</span>
-          <span class="ts-val loss" id="ts-losses">0</span>
-        </div>
-        <div class="track-stat">
-          <span class="ts-label">รอผล</span>
-          <span class="ts-val pending" id="ts-pending">0</span>
-        </div>
-      </div>
-      <div class="track-bar" id="track-bar">
-        <div class="tb-fill" id="tb-fill" style="width:0%"></div>
-      </div>
-      <button id="clear-api-btn" style="background:transparent; border:1px solid var(--line); color:var(--ink-dim); padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-family:var(--mono); margin-top:10px;">RESET STATS</button>
-      <ul class="track-list" id="track-list" style="margin-top:12px;">
-        <li class="empty">ยังไม่มีคำสั่งซื้อที่ปิดดีลในเซสชันนี้</li>
-      </ul>
+    <div class="stats-bar">
+      <div class="sstat"><div class="sstat-n" id="stTotal">0</div><div class="sstat-l">สแกน</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--green)" id="stSignal">0</div><div class="sstat-l">สัญญาณ</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--orange)" id="stFiltered">0</div><div class="sstat-l">กรองออก</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--blue)" id="stRate">-</div><div class="sstat-l">Signal%</div></div>
     </div>
-  </div>
-
-  <div class="disclosure">
-    <span class="ic">!</span>
-    <span><b>ข้อมูลนี้ไม่ใช่คำแนะนำการลงทุน</b> — ระบบส่งคำสั่งออปชันอัตโนมัติรองรับทั้งพอร์ตเดโมเสมือนและพอร์ตจริง การสลับโหมดจะเปลี่ยนเป้าหมายเงินทุนทันที โปรดระมัดระวังและตั้งค่าจำนวนไม้สูงสุดควบคุม drawdown เสมอ</span>
-  </div>
-
-  <div class="log-panel">
-    <div class="log-head">Terminal Log — ข้อมูลสตรีมมิ่ง API</div>
-    <ul class="log-list" id="log-container">
-      <li>ระบบพร้อมทำงาน — ป้อน API Token ตามโหมดที่ต้องการแล้วเริ่มทำงาน</li>
-    </ul>
+    <div class="sec" style="flex:1;padding:10px 0 0;">
+      <div class="signal-wrap">
+        <div class="lock-overlay" id="lockOverlay">
+          <div class="tve-wrap">
+            <div class="ring-a"></div><div class="ring-b"></div><div class="ring-c"></div>
+            <div class="orbit"></div>
+            <svg class="tve-hex" viewBox="0 0 84 84" fill="none"><polygon points="42,4 78,23 78,61 42,80 6,61 6,23" fill="rgba(245,200,66,0.06)" stroke="rgba(245,200,66,0.4)" stroke-width="1.5"/></svg>
+            <div class="tve-lbl">TVE</div>
+          </div>
+          <div class="lock-title">TVE MATRIX NODE</div>
+          <div class="lock-desc">กรอกรหัสผ่านเพื่อเชื่อมระบบ</div>
+          <div class="lock-row">
+            <input type="password" class="lock-input" id="pwdInput" placeholder="CODE..." onkeydown="if(event.key==='Enter')checkUnlockCode()">
+            <button class="lock-ok" onclick="checkUnlockCode()">OK</button>
+          </div>
+          <div class="lock-err" id="lockErr">รหัสไม่ถูกต้อง</div>
+        </div>
+        <table class="sig-table">
+          <thead><tr><th>สินทรัพย์</th><th>ราคาปัจจุบัน</th><th>สัญญาณ</th><th>Score/100</th></tr></thead>
+          <tbody id="sigTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="daily-panel">
+      <div class="daily-hdr">
+        <span class="daily-title">สรุปพูลมาติงเกลประจำเซสชัน</span>
+        <button class="daily-rst" onclick="resetDaily()">ล้างประวัติ</button>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi total"><div class="kpi-n" id="dTotal">0</div><div class="kpi-l">แมตช์ดีล</div></div>
+        <div class="kpi win"><div class="kpi-n" id="dWin">0</div><div class="kpi-l">ชนะ</div></div>
+        <div class="kpi lose"><div class="kpi-n" id="dLose">0</div><div class="kpi-l">แพ้</div></div>
+        <div class="kpi rate"><div class="kpi-n" id="dRate">-</div><div class="kpi-l">Win%</div></div>
+      </div>
+      <div class="wr-bar"><div class="wr-fill" id="dWrFill" style="width:0%"></div></div>
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>เวลา</th><th>คู่เงิน</th><th>ทิศทาง</th><th>ไม้ทบ</th><th>ผลลัพธ์</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="5" class="log-empty">ยังไม่มีสัญญาณยิงพอร์ต</td></tr></tbody>
+        </table>
+      </div>
+      <div class="auto-note">เทอร์มินอลจะบล็อกการเข้าซื้อซ้อนกันอัตโนมัติ 1 ออเดอร์เดี่ยวทั่วกระดาน</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+      <span class="spin-ic">&#8635;</span><span id="refreshLbl">คัดกรองรอบใหม่ + ล้างแคช API</span>
+    </button>
   </div>
 </div>
 
 <script>
-  const ALL_SYMBOLS = [
-    { sym: 'R_10',     label: 'Volatility 10 Index',    dec: 3 },
-    { sym: 'R_25',     label: 'Volatility 25 Index',    dec: 3 },
-    { sym: 'R_50',     label: 'Volatility 50 Index',    dec: 4 },
-    { sym: 'R_75',     label: 'Volatility 75 Index',    dec: 4 },
-    { sym: 'R_100',    label: 'Volatility 100 Index',   dec: 2 },
-    { sym: '1HZ10V',   label: 'Volatility 10 (1s) Index', dec: 3 },
-    { sym: '1HZ25V',   label: 'Volatility 25 (1s) Index', dec: 3 },
-    { sym: '1HZ30V',   label: 'Volatility 30 (1s) Index', dec: 3 },
-    { sym: '1HZ50V',   label: 'Volatility 50 (1s) Index', dec: 4 },
-    { sym: '1HZ75V',   label: 'Volatility 75 (1s) Index', dec: 4 },
-    { sym: '1HZ100V',  label: 'Volatility 100 (1s) Index',dec: 2 },
-    { sym: 'R_150',    label: 'Volatility 150 Index',   dec: 4 },
-    { sym: 'R_250',    label: 'Volatility 250 Index',   dec: 4 }
-  ];
+window.isUnlocked=false;
+let tf='15', filterLevel='normal', lastSent={}, chartFocus='R_75';
+let ws = null;
+let apiToken = '';
+let isAuthorized = false;
+let accountMode = 'demo';
+let baseStake = 1.0;
+let globalStepCount = 0; 
+let globalOrderLock = false; 
+let currentlyTradingSymbol = null;
+let activeProposalReqId = null;
 
-  const APP_ID = '1089';
-  let ws = null;
-  let apiToken = '';
-  let isAuthorized = false;
-  let accountMode = 'demo'; 
-  let baseStake = 1.0; 
+let state = {};
+let rawCandlesCache = {}; 
 
-  let watchedSymbols = ['R_75', 'R_100', '1HZ75V'];
-  let focusedSymbol = 'R_75';
-  let durationVal = '5_ticks';
-  let lookbackPeriod = 20;
-  let allowedMaxSteps = 5;
-  let martingaleMultiplier = 2.0; 
+const ASSETS={
+  R_10:{tv:"DERIV:10",sym:"R_10",active:true,name:"Volatility 10",dp:3},
+  R_25:{tv:"DERIV:25",sym:"R_25",active:true,name:"Volatility 25",dp:3},
+  R_50:{tv:"DERIV:50",sym:"R_50",active:true,name:"Volatility 50",dp:4},
+  R_75:{tv:"DERIV:75",sym:"R_75",active:true,name:"Volatility 75",dp:4},
+  R_100:{tv:"DERIV:100",sym:"R_100",active:false,name:"Volatility 100",dp:2},
+  "1HZ75V":{tv:"DERIV:751S",sym:"1HZ75V",active:false,name:"Vol 75 (1s)",dp:4},
+  "1HZ100V":{tv:"DERIV:1001S",sym:"1HZ100V",active:false,name:"Vol 100 (1s)",dp:2},
+  R_150:{tv:"DERIV:150",sym:"R_150",active:false,name:"Volatility 150",dp:4}
+};
 
-  function durationToLookback(v) {
-    if (v === '5_ticks') return 20;
-    if (v === '10_ticks') return 40;
-    if (v === '5_min') return 260;
-    if (v === '15_min') return 700;
-    return 20;
+const FILTERS={
+  loose:{rsiLo:25,rsiHi:75,volMul:1.0,bodyMin:0.3,confirmBars:1,atrMin:0.0002,macdConfirm:false,desc:'<b>LOOSE:</b> แท่งเทียนทะลุกรอบ Donchian ขอบนอก + EMA'},
+  normal:{rsiLo:35,rsiHi:65,volMul:1.1,bodyMin:0.45,confirmBars:1,atrMin:0.0005,macdConfirm:true,desc:'<b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน'},
+  tight:{rsiLo:40,rsiHi:60,volMul:1.3,bodyMin:0.55,confirmBars:2,atrMin:0.0008,macdConfirm:true,desc:'<b>TIGHT:</b> คัดกรองกรอบแคบพิเศษ + แท่งยันยันคู่สองรอบ'},
+};
+
+// INITIALIZE DERIV GATEWAY CONNECTION
+function connectDerivPort() {
+  const token = document.getElementById('deriv-token-input').value.trim();
+  if(!token) { alert('กรุณาใส่ API Token ของ Deriv ก่อนเชื่อมต่อครับ'); return; }
+  apiToken = token;
+  accountMode = document.getElementById('deriv-mode-select').value;
+  initDerivWebSocket();
+}
+
+function disconnectDerivPort() {
+  if(confirm('ต้องการสลับบัญชี/ตัดการเชื่อมต่อพอร์ตหลักใช่ไหมครับ?')) {
+    if(ws) ws.close();
+    apiToken = '';
+    isAuthorized = false;
+    globalOrderLock = false;
+    currentlyTradingSymbol = null;
+    document.getElementById('deriv-gate-inputs').style.display = 'flex';
+    document.getElementById('deriv-info-display').style.display = 'none';
+    document.getElementById('deriv-status').textContent = 'DISCONNECTED';
+    document.getElementById('global-lock-banner').textContent = "PORT STATUS: READY 🟢";
+    document.getElementById('global-lock-banner').style.color = 'var(--green)';
+    updateMartingaleLabels();
   }
-  
-  function durationToWaitTicks(v) {
-    if (v === '5_ticks') return 5;
-    if (v === '10_ticks') return 10;
-    if (v === '5_min') return 150; 
-    if (v === '15_min') return 450;
-    return 5;
-  }
+}
 
-  let state = {};
+function initDerivWebSocket() {
+  if(ws) { try{ ws.close(); }catch(e){} }
+  ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
 
-  function freshState() {
-    return {
-      ticks: [],
-      tickCounter: 0,
-      lastPrice: null,
-      prevPrice: null,
-      resistance: null,
-      support: null,
-      sigType: 'NEUTRAL',
-      sigText: 'กำลังวิเคราะห์โครงสร้างราคา…',
-      sigSub: 'รอข้อมูล tick เพื่อคำนวณกรอบราคา',
-      pendingContracts: [], 
-      resolvedContracts: [],
-      statWins: 0,
-      statLosses: 0,
-      currentStepCount: 0 
-    };
-  }
+  ws.onopen = () => {
+    document.getElementById('deriv-status').textContent = 'CONNECTING...';
+    if(apiToken) ws.send(JSON.stringify({ authorize: apiToken }));
+  };
 
-  function ensureState(sym) {
-    if (!state[sym]) state[sym] = freshState();
-  }
-
-  const pickerContainer = document.getElementById('watchlist-picker');
-  const watchCountEl = document.getElementById('watch-count');
-  const watchGrid = document.getElementById('watch-grid');
-  const watchEmpty = document.getElementById('watch-empty');
-  const focusSection = document.getElementById('focus-section');
-  const durationSelect = document.getElementById('duration-select');
-  const maxStepsSelect = document.getElementById('max-steps-select');
-  const martingaleMultiplierSelect = document.getElementById('martingale-multiplier-select');
-  const logContainer = document.getElementById('log-container');
-  const connDot = document.getElementById('conn-dot');
-  const apiStatus = document.getElementById('api-status');
-  const themeToggleBtn = document.getElementById('theme-toggle');
-  
-  const apiGateInputs = document.getElementById('api-gate-inputs');
-  const accountModeSelect = document.getElementById('account-mode-select');
-  const apiTokenInput = document.getElementById('api-token-input');
-  const apiConnectBtn = document.getElementById('api-connect-btn');
-  const accountInfoDisplay = document.getElementById('account-info-display');
-  const badgeAccountMode = document.getElementById('badge-account-mode');
-  const accEmail = document.getElementById('acc-email');
-  const accBalance = document.getElementById('acc-balance');
-  const apiDisconnectBtn = document.getElementById('api-disconnect-btn');
-  const clearApiBtn = document.getElementById('clear-api-btn');
-
-  themeToggleBtn.addEventListener('click', () => {
-    if (document.documentElement.getAttribute('data-theme') === 'light') {
-      document.documentElement.removeAttribute('data-theme');
-      themeToggleBtn.textContent = '🌙';
-    } else {
-      document.documentElement.setAttribute('data-theme', 'light');
-      themeToggleBtn.textContent = '☀️';
-    }
-    renderWatchGrid();
-    renderFocused(focusedSymbol);
-  });
-
-  maxStepsSelect.addEventListener('change', (e) => {
-    allowedMaxSteps = parseInt(e.target.value);
-    addLog(`🛡️ ปรับขีดจำกัดเพดานทบไม้สูงสุดเป็น: ไม่เกิน ${allowedMaxSteps} ไม้`);
-  });
-
-  martingaleMultiplierSelect.addEventListener('change', (e) => {
-    martingaleMultiplier = parseFloat(e.target.value);
-    addLog(`📈 ปรับสเกลตัวคูณทบเงินมาติงเกลใหม่เมื่อแพ้เป็น: x${martingaleMultiplier}`);
-    renderFocused(focusedSymbol);
-  });
-
-  clearApiBtn.addEventListener('click', () => {
-    if(confirm('ต้องการรีเซ็ตประวัติและค่า Win Rate ในเซสชันนี้ใช่ไหมครับ?')) {
-      watchedSymbols.forEach(sym => { state[sym] = freshState(); });
-      renderWatchGrid(); renderFocused(focusedSymbol); renderCombinedWinRate();
-      addLog('🧹 ล้างสถิติประวัติดีลบนเทอร์มินอลเรียบร้อยแล้ว');
-    }
-  });
-
-  function playSignalSound(type) {
-    try {
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (type === 'HIGHER') {
-        playTone(audioCtx, 880, 0.1, 0);
-        playTone(audioCtx, 1318.51, 0.15, 0.12);
-      } else if (type === 'LOWER') {
-        playTone(audioCtx, 440, 0.12, 0);
-        playTone(audioCtx, 349.23, 0.2, 0.1);
-      }
-    } catch (e) { console.log("Audio Alert Blocked", e); }
-  }
-
-  function playTone(ctx, freq, duration, delay) {
-    const osc = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-    osc.type = 'sine'; osc.frequency.value = freq;
-    gainNode.gain.setValueAtTime(0.15, ctx.currentTime + delay);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
-    osc.connect(gainNode); gainNode.connect(ctx.destination);
-    osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + duration);
-  }
-
-  apiConnectBtn.addEventListener('click', () => {
-    const token = apiTokenInput.value.trim();
-    if(!token) { alert('กรุณากรอก API Token เพื่อระบุสิทธิ์พอร์ตก่อนครับ'); return; }
-    apiToken = token;
-    accountMode = accountModeSelect.value; 
-    addLog(`🔑 กำลังส่งโครงสร้างสิทธิ์ยืนยันพอร์ตย่อย [โหมด: ${accountMode.toUpperCase()}]...`);
-    sendAuthorize();
-  });
-
-  apiDisconnectBtn.addEventListener('click', () => {
-    if (confirm('คุณต้องการตัดการเชื่อมต่อพอร์ตปัจจุบัน เพื่อเปลี่ยนไปใช้ API Token ชุดอื่นใช่ไหมครับ?')) {
-      addLog(`🔒 กำลังสั่งตัดการเชื่อมต่อพอร์ตเดิม...`);
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ forget_all: "ticks" }));
-      }
-      apiToken = '';
-      isAuthorized = false;
-      accountInfoDisplay.style.display = 'none';
-      apiGateInputs.style.display = 'flex';
-      apiTokenInput.value = ''; 
-      accBalance.textContent = '$0.00';
-      accEmail.textContent = '—';
-      watchedSymbols.forEach(sym => { state[sym] = freshState(); });
-      renderWatchGrid(); 
-      if (watchedSymbols.includes(focusedSymbol)) renderFocused(focusedSymbol);
-      renderCombinedWinRate();
-      addLog('🔓 ปลดล็อกพอร์ตสำเร็จ! สามารถระบุ Token ตัวใหม่เข้าไปทำงานต่อได้ทันทีครับ');
-    }
-  });
-
-  function sendAuthorize() {
-    if (ws && ws.readyState === WebSocket.OPEN && apiToken) {
-      ws.send(JSON.stringify({ authorize: apiToken }));
-    }
-  }
-
-  function fetchBalance() {
-    if (ws && ws.readyState === WebSocket.OPEN && isAuthorized) {
-      ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
-    }
-  }
-
-  // ---------------- Fix ลอจิกส่งพารามิเตอร์ Rise / Fall ทั้งหมด ----------------
-  function executeRealContract(symbol, direction) {
-    ensureState(symbol);
-    const s = state[symbol];
+  ws.onmessage = (msg) => {
+    const data = JSON.parse(msg.data);
     
-    if (s.pendingContracts.length > 0) return; 
-
-    const currentStake = parseFloat((baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2));
-
-    let durationNumber = 5;
-    let durationUnitStr = 't';
-    let contractType = '';
-
-    // ล็อกโครงสร้างตัวแปรของสัญญากลุ่ม Rise/Fall (CALL/PUT สำหรับ Ticks และ RISE/FALL สำหรับนาทีเพื่อเคลียร์ Barrier Error)
-    if (durationVal === '5_ticks') { 
-      durationNumber = 5; durationUnitStr = 't'; 
-      contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
-    }
-    else if (durationVal === '10_ticks') { 
-      durationNumber = 10; durationUnitStr = 't'; 
-      contractType = direction === 'HIGHER' ? 'CALL' : 'PUT';
-    }
-    else if (durationVal === '5_min') { 
-      durationNumber = 5; durationUnitStr = 'm'; 
-      contractType = direction === 'HIGHER' ? 'RISE' : 'FALL'; // ปรับใช้สัญญารูปแบบนาทีสากล
-    }
-    else if (durationVal === '15_min') { 
-      durationNumber = 15; durationUnitStr = 'm'; 
-      contractType = direction === 'HIGHER' ? 'RISE' : 'FALL';
-    }
-
-    const calculatedWaitTicks = durationToWaitTicks(durationVal);
-
-    if (!isAuthorized || !ws || ws.readyState !== WebSocket.OPEN) {
-      addLog(`📢 [VIRTUAL] สัญญาณ ${direction} ทำงาน (ไม้ M-${s.currentStepCount + 1}) ทุน: $${currentStake} [ระยะเวลา: ${durationNumber}${durationUnitStr}]`);
-      
-      const localContract = {
-        id: 'ID-VIRTUAL-' + Math.floor(Math.random() * 89999 + 10000),
-        dir: direction,
-        entryPrice: s.lastPrice,
-        entryTick: s.tickCounter,
-        resolveAtTick: s.tickCounter + calculatedWaitTicks,
-        step: s.currentStepCount + 1,
-        stakeValue: currentStake,
-        apiTracked: false
-      };
-      s.pendingContracts.push(localContract);
-      return;
-    }
-
-    const orderRequest = {
-      buy: 1,
-      price: currentStake,
-      parameters: {
-        amount: currentStake,
-        basis: 'stake',
-        contract_type: contractType,
-        currency: 'USD',
-        duration: durationNumber,
-        duration_unit: durationUnitStr, 
-        symbol: symbol
-      }
-    };
-
-    ws.send(JSON.stringify(orderRequest));
-    
-    const apiContract = {
-      id: 'AWAITING-API-ID',
-      dir: direction,
-      entryPrice: s.lastPrice,
-      entryTick: s.tickCounter,
-      resolveAtTick: s.tickCounter + calculatedWaitTicks,
-      step: s.currentStepCount + 1,
-      stakeValue: currentStake,
-      apiTracked: false
-    };
-    s.pendingContracts.push(apiContract);
-    addLog(`🎯 [${symbol}] ตรวจพบเบรคเอาท์! ส่งคำสั่งยิงออเดอร์ Rise/Fall ไม้ M-${apiContract.step} (ขนาดทุน: $${currentStake})`);
-  }
-
-  function renderPicker() {
-    pickerContainer.innerHTML = ALL_SYMBOLS.map(item => {
-      const isAct = watchedSymbols.includes(item.sym) ? 'active' : '';
-      return `<div class="chip ${isAct}" data-sym="${item.sym}">${item.sym}</div>`;
-    }).join('');
-    watchCountEl.textContent = `${watchedSymbols.length} รายการ`;
-
-    pickerContainer.querySelectorAll('.chip').forEach(el => {
-      el.addEventListener('click', () => {
-        const sym = el.getAttribute('data-sym');
-        if (watchedSymbols.includes(sym)) {
-          if (watchedSymbols.length > 1) {
-            watchedSymbols = watchedSymbols.filter(s => s !== sym);
-            if (focusedSymbol === sym) focusedSymbol = watchedSymbols[0];
-            unsubscribeSymbol(sym);
-          }
-        } else {
-          watchedSymbols.push(sym);
-          focusedSymbol = sym;
-          ensureState(sym);
-          subscribeSymbol(sym);
-        }
-        renderPicker(); renderWatchGrid(); renderFocused(focusedSymbol); renderCombinedWinRate();
-      });
-    });
-  }
-
-  function renderWatchGrid() {
-    if (watchedSymbols.length === 0) { watchEmpty.style.display = 'block'; watchGrid.innerHTML = ''; return; }
-    watchEmpty.style.display = 'none';
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const strokeColor = isLight ? '#4b5563' : '#c8cfdc';
-
-    watchGrid.innerHTML = watchedSymbols.map(sym => {
-      const s = state[sym]; const meta = ALL_SYMBOLS.find(i => i.sym === sym); if (!s) return '';
-      const priceStr = s.lastPrice ? s.lastPrice.toFixed(meta.dec) : '—.——';
-      
-      let badgeCls = 'neutral';
-      if (s.sigType === 'BUY') badgeCls = 'buy';
-      if (s.sigType === 'SELL') badgeCls = 'sell';
-      if (s.sigType === 'BLOCK') badgeCls = 'block';
-
-      const total = s.statWins + s.statLosses;
-      const wrStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
-      const wrCls = total > 0 ? ( (s.statWins/total) >= 0.5 ? 'good' : 'bad' ) : '';
-      const focusedCls = focusedSymbol === sym ? 'focused' : '';
-
-      let polylineHtml = '';
-      if (s.ticks.length >= 2) {
-        const min = Math.min(...s.ticks); const max = Math.max(...s.ticks); const range = max - min;
-        const pts = s.ticks.map((t, idx) => {
-          const x = (idx / (s.ticks.length - 1)) * 120;
-          const y = range === 0 ? 14 : 26 - ((t - min) / range) * 24;
-          return `${x.toFixed(1)},${y.toFixed(1)}`;
-        }).join(' ');
-        polylineHtml = `<polyline fill="none" stroke="${strokeColor}" stroke-width="1.2" points="${pts}"></polyline>`;
-      }
-
-      const nextStakeVal = (baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2);
-
-      return `<div class="watch-card ${focusedCls}" data-sym="${sym}">
-        <div class="wc-top"><span class="wc-name">${meta.label}</span><span class="wc-badge ${badgeCls}">${s.sigType}</span></div>
-        <div class="wc-mid"><span class="wc-price">${priceStr}</span><div class="wc-spark-wrap"><svg viewBox="0 0 120 28" preserveAspectRatio="none">${polylineHtml}</svg></div></div>
-        <div class="wc-bottom">
-          <div class="wc-wr">Win Rate: <span class="wc-wr-val ${wrCls}">${wrStr}</span></div>
-          <div>ดีลค้าง: ${s.pendingContracts.length} (M-${s.currentStepCount + 1} = $${nextStakeVal})</div>
-        </div>
-      </div>`;
-    }).join('');
-
-    watchGrid.querySelectorAll('.watch-card').forEach(card => {
-      card.addEventListener('click', () => {
-        focusedSymbol = card.getAttribute('data-sym');
-        watchGrid.querySelectorAll('.watch-card').forEach(c => c.classList.remove('focused'));
-        card.classList.add('focused');
-        renderFocused(focusedSymbol);
-      });
-    });
-  }
-
-  function renderFocused(sym) {
-    const s = state[sym]; const meta = ALL_SYMBOLS.find(i => i.sym === sym); if (!s) { focusSection.style.display = 'none'; return; }
-    focusSection.style.display = 'block';
-    document.getElementById('fl-name').textContent = meta.label;
-    document.getElementById('hero-asset').textContent = sym;
-
-    const priceEl = document.getElementById('current-price'); const deltaEl = document.getElementById('price-delta');
-    if (s.lastPrice !== null) {
-      priceEl.textContent = s.lastPrice.toFixed(meta.dec);
-      if (s.prevPrice !== null && s.lastPrice !== s.prevPrice) {
-        const diff = s.lastPrice - s.prevPrice; const pct = (diff / s.prevPrice) * 100;
-        deltaEl.textContent = (pct >= 0 ? '+' : '') + pct.toFixed(3) + '%'; deltaEl.className = `price-delta ${pct > 0 ? 'up' : 'down'}`;
-      }
-    }
-    document.getElementById('res-price').textContent = s.resistance ? s.resistance.toFixed(meta.dec) : '0.00';
-    document.getElementById('sup-price').textContent = s.support ? s.support.toFixed(meta.dec) : '0.00';
-
-    const sigPanel = document.getElementById('signal-output'); const sigTxt = document.getElementById('sig-text'); const sigSb = document.getElementById('sig-sub');
-    sigPanel.className = `signal ${s.sigType.toLowerCase()}`; sigTxt.textContent = s.sigText; sigSb.textContent = s.sigSub;
-
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-    const mainStrokeColor = isLight ? 'var(--accent)' : '#5eead4';
-    const polyline = document.getElementById('spark-line'); const polygon = document.getElementById('spark-fill');
-    polyline.setAttribute('stroke', mainStrokeColor);
-
-    if (s.ticks.length >= 2) {
-      const min = Math.min(...s.ticks); const max = Math.max(...s.ticks); const spread = max - min;
-      const pts = s.ticks.map((t, idx) => {
-        const x = (idx / (s.ticks.length - 1)) * 600; const y = spread === 0 ? 32 : 58 - ((t - min) / spread) * 52; return `${x.toFixed(1)},${y.toFixed(1)}`;
-      });
-      const linePts = pts.join(' '); polyline.setAttribute('points', linePts); polygon.setAttribute('points', `0,64 ${linePts} 600,64`);
-    }
-
-    const total = s.statWins + s.statLosses;
-    const wrRateStr = total > 0 ? ((s.statWins / total) * 100).toFixed(0) + '%' : '—';
-    
-    const currentEstimatedStake = (baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2);
-
-    document.getElementById('track-count').textContent = `${total + s.pendingContracts.length} ดีล (สเตปปัจจุบัน: M-${s.currentStepCount + 1}/${allowedMaxSteps} | ทุนไม้ถัดไป: $${currentEstimatedStake})`;
-    document.getElementById('ts-winrate').textContent = wrRateStr;
-    document.getElementById('ts-wins').textContent = s.statWins;
-    document.getElementById('ts-losses').textContent = s.statLosses;
-    document.getElementById('ts-pending').textContent = s.pendingContracts.length;
-    document.getElementById('tb-fill').style.width = total > 0 ? `${(s.statWins / total) * 100}%` : '0%';
-
-    const listContainer = document.getElementById('track-list');
-    if (s.resolvedContracts.length === 0) {
-      listContainer.innerHTML = '<li class="empty">ยังไม่มีคำสั่งซื้อที่ปิดดีลในเซสชันนี้</li>';
-    } else {
-      listContainer.innerHTML = s.resolvedContracts.slice(0, 30).map(r => {
-        const resCls = r.result.toLowerCase(); const resSym = r.result === 'WIN' ? 'W' : 'L';
-        const dirCls = r.dir.toLowerCase() === 'higher' ? 'buy' : 'sell'; const dirLabel = r.dir === 'HIGHER' ? 'CALL/RISE' : 'PUT/FALL';
-        const time = r.resolvedAt.toLocaleTimeString('th-TH', { hour12: false });
-        return `<li>
-          <span class="tl-result ${resCls}">${resSym}</span>
-          <span class="tl-dir ${dirCls}">${dirLabel}</span>
-          <span class="tl-prices">${r.entryPrice.toFixed(meta.dec)} → ${r.exitPrice.toFixed(meta.dec)}</span>
-          <span class="tl-time">${time} (ไม้ M-${r.step} | ขนาด $${r.stakeValue.toFixed(2)})</span>
-        </li>`;
-      }).join('');
-    }
-  }
-
-  function renderCombinedWinRate() {
-    const banner = document.getElementById('combined-banner'); const winrateEl = document.getElementById('cb-winrate');
-    let totalWins = 0; let totalLosses = 0;
-    watchedSymbols.forEach(sym => { const s = state[sym]; if (s) { totalWins += s.statWins; totalLosses += s.statLosses; } });
-    const grandTotal = totalWins + totalLosses;
-    if (grandTotal > 0) { banner.style.display = 'flex'; winrateEl.textContent = ((totalWins / grandTotal) * 100).toFixed(1) + '%'; } 
-    else { banner.style.display = 'none'; }
-  }
-
-  function addLog(text) {
-    const time = new Date().toLocaleTimeString('th-TH', { hour12: false });
-    const li = document.createElement('li'); li.textContent = `${time}  ${text}`;
-    logContainer.insertBefore(li, logContainer.firstChild);
-    while (logContainer.children.length > 60) logContainer.removeChild(logContainer.lastChild);
-  }
-
-  durationSelect.addEventListener('change', (e) => {
-    durationVal = e.target.value; lookbackPeriod = durationToLookback(durationVal);
-    watchedSymbols.forEach(sym => { state[sym] = freshState(); });
-    renderWatchGrid(); if (watchedSymbols.includes(focusedSymbol)) renderFocused(focusedSymbol);
-    addLog(`⏰ เปลี่ยนเวลาสัญญาร่วมเป็น: ${durationSelect.options[durationSelect.selectedIndex].text} (ล้างประวัติคำนวณฐานใหม่)`);
-  });
-
-  function connectWS() {
-    if (ws) { try { ws.close(); } catch(e){} }
-    ws = new WebSocket(`wss://ws.derivws.com/websockets/v3?app_id=${APP_ID}`);
-
-    ws.onopen = () => {
-      connDot.className = 'dot live'; apiStatus.textContent = 'LIVE';
-      addLog('📡 เชื่อมต่อเกตเวย์รับข้อมูลสดผ่าน Deriv WebSocket Server');
-      if(apiToken) sendAuthorize();
-      watchedSymbols.forEach(sym => subscribeSymbol(sym));
-    };
-
-    ws.onmessage = (msg) => {
-      const data = JSON.parse(msg.data);
-      
-      if (data.msg_type === 'authorize') {
-        if(data.error) {
-          isAuthorized = false; alert(`การยืนยันสิทธิ์ Token ล้มเหลว: ${data.error.message}`);
-          addLog('❌ ปฏิเสธการต่อพอร์ต: กรุณาตรวจสอบรหัสสิทธิ์และโหมดพอร์ตพาสเวิร์ด');
-        } else {
-          isAuthorized = true;
-          apiGateInputs.style.display = 'none'; 
-          accountInfoDisplay.style.display = 'flex'; 
-          
-          badgeAccountMode.textContent = accountMode === 'demo' ? 'DEMO 🧪' : 'REAL 💰';
-          badgeAccountMode.className = `badge-mode ${accountMode}`;
-          
-          accEmail.textContent = data.authorize.email;
-          addLog(`✅ บัญชี ${data.authorize.email} เปิดระบบสำเร็จ! [โหมดพอร์ต: ${accountMode.toUpperCase()}]`);
-          fetchBalance();
-        }
-      }
-
-      if (data.msg_type === 'balance') {
-        if(!data.error && data.balance && isAuthorized) {
-          accBalance.textContent = `$${parseFloat(data.balance.balance).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-        }
-      }
-
-      if (data.msg_type === 'buy') {
-        if(data.error) {
-          addLog(`🚨 [API ERROR] เซิร์ฟเวอร์ปฏิเสธดีล: ${data.error.message}`);
-          const sym = focusedSymbol; 
-          if(state[sym]) state[sym].pendingContracts = [];
-        } else {
-          const buyInfo = data.buy;
-          addLog(`📦 [API ORDER ACCEPTED] ออกคำสั่งซื้อสำเร็จ! เลขที่ดีล: ${buyInfo.contract_id} (จำนวนทุน: $${buyInfo.price.toFixed(2)})`);
-          
-          watchedSymbols.forEach(sym => {
-            ensureState(sym);
-            state[sym].pendingContracts.forEach(c => {
-              if(c.id === 'AWAITING-API-ID' && !c.apiTracked) {
-                c.id = buyInfo.contract_id; c.apiTracked = true;
-              }
-            });
-          });
-        }
-      }
-
-      if (data.msg_type === 'tick') {
-        onTickReceived(data.tick);
-      }
-    };
-
-    ws.onclose = () => {
-      connDot.className = 'dot'; apiStatus.textContent = 'กำลังเชื่อมต่อ…';
-      isAuthorized = false; setTimeout(connectWS, 4000);
-    };
-  }
-
-  function subscribeSymbol(sym) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ ticks: sym }));
-  }
-  function unsubscribeSymbol(sym) {
-    if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ forget: sym }));
-  }
-
-  function onTickReceived(tick) {
-    const sym = tick.symbol; if (!watchedSymbols.includes(sym)) return;
-    ensureState(sym); const s = state[sym]; const price = parseFloat(tick.quote);
-
-    s.tickCounter++; s.prevPrice = s.lastPrice; s.lastPrice = price; s.ticks.push(price);
-    if (s.ticks.length > lookbackPeriod) s.ticks.shift();
-
-    evaluatePendingContracts(sym, price, s.tickCounter);
-
-    if (s.ticks.length >= 15) {
-      s.resistance = Math.max(...s.ticks.slice(0, -2));
-      s.support = Math.min(...s.ticks.slice(0, -2));
-
-      const largePeriod = s.ticks.length; const shortPeriod = 4;
-      const mtfMainTrend = s.ticks.reduce((a,b)=>a+b,0) / largePeriod; 
-      const currentMomentum = s.ticks.slice(-shortPeriod).reduce((a,b)=>a+b,0) / shortPeriod; 
-
-      let majorBias = 'SIDEWAYS';
-      if (currentMomentum > mtfMainTrend) majorBias = 'BULLISH';
-      if (currentMomentum < mtfMainTrend) majorBias = 'BEARISH';
-
-      const totalRange = s.resistance - s.support;
-      const midMin = s.support + (totalRange * 0.35);
-      const midMax = s.support + (totalRange * 0.65);
-      const prevSigType = s.sigType;
-
-      if (price > midMin && price < midMax) {
-        s.sigType = 'BLOCK'; s.sigText = 'COMPRESSION: MID-ZONE';
-        s.sigSub = `⏳ สภาพราคาบีบอัดตัวในกรอบสะสมพลัง รอจังหวะระเบิดเบรคเอาท์ (เทรนหลัก: ${majorBias})`;
-      } 
-      else if (price >= s.resistance && majorBias === 'BULLISH') {
-        s.sigType = 'BUY'; s.sigText = 'BREAKOUT: HIGHER';
-        s.sigSub = '🟢 สัญญาณเบรคเอาท์ขาขึ้นทำงาน: ทะลุกำแพงแนวต้านสำเร็จเปิดสัญญา CALL/RISE';
-        
-        if (prevSigType !== 'BUY') {
-          playSignalSound('HIGHER'); 
-          executeRealContract(sym, 'HIGHER'); 
-        }
-      } 
-      else if (price <= s.support && majorBias === 'BEARISH') {
-        s.sigType = 'SELL'; s.sigText = 'BREAKOUT: LOWER';
-        s.sigSub = '🔴 สัญญาณเบรคเอาท์ขาลงทำงาน: หลุดกำแพงแนวรับด้านล่างเปิดสัญญา PUT/FALL';
-        
-        if (prevSigType !== 'SELL') {
-          playSignalSound('LOWER');
-          executeRealContract(sym, 'LOWER');
-        }
-      } 
-      else {
-        s.sigType = 'BLOCK'; s.sigText = 'BLOCK: UNSTABLE BREAK';
-        s.sigSub = '⚠️ ระงับสัญญาณ: ราคาออกนอกกรอบพักตัวแต่ทิศทางมัลติไทม์เฟรมยังขัดแย้งกัน';
-      }
-    }
-
-    renderWatchGrid(); if (sym === focusedSymbol) renderFocused(focusedSymbol); renderCombinedWinRate();
-  }
-
-  function evaluatePendingContracts(sym, currentPrice, currentTickNum) {
-    const s = state[sym]; if (!s.pendingContracts.length) return;
-    
-    const toResolve = s.pendingContracts.filter(c => currentTickNum >= c.resolveAtTick);
-    s.pendingContracts = s.pendingContracts.filter(c => currentTickNum < c.resolveAtTick);
-
-    toResolve.forEach(c => {
-      let result = 'LOSS';
-      if (c.dir === 'HIGHER' && currentPrice > c.entryPrice) result = 'WIN';
-      if (c.dir === 'LOWER' && currentPrice < c.entryPrice) result = 'WIN';
-
-      if (result === 'WIN') {
-        s.statWins++;
-        addLog(`🎉 [PROFIT] ดีล ${c.id} ชนะที่ไม้ ${c.step}! -> รีเซ็ตกลับไม้ 1`);
-        s.currentStepCount = 0; 
+    if(data.msg_type === 'authorize') {
+      if(data.error) {
+        alert(`Token ผิดพลาด: ${data.error.message}`);
+        ws.close();
       } else {
-        s.statLosses++;
-        s.currentStepCount++; 
-        
-        if (s.currentStepCount >= allowedMaxSteps) {
-          addLog(`🛑 [STOP LOSS] พอร์ต [${sym}] ผิดทางถึงลิมิตสูงสุดที่ล็อกไว้ (${allowedMaxSteps} ไม้) บ็อตตัดขาดทุนรอบนี้ทิ้ง (Cut Loss) และบังคับรีเซ็ตกลับไม้ 1 ทันที!`);
-          s.currentStepCount = 0;
-        } else {
-          const nextLayerStake = (baseStake * Math.pow(martingaleMultiplier, s.currentStepCount)).toFixed(2);
-          addLog(`❌ [LOSS] ดีล ${c.id} แพ้ที่ไม้ ${c.step}! ระบบทบเงินมาติงเกลด้วยตัวคูณ x${martingaleMultiplier} (เตรียมไม้ M-${s.currentStepCount + 1} ขนาดทุน: $${nextLayerStake})`);
+        isAuthorized = true;
+        document.getElementById('deriv-status').textContent = accountMode.toUpperCase() + ' 🟢';
+        document.getElementById('deriv-gate-inputs').style.display = 'none';
+        document.getElementById('deriv-info-display').style.display = 'flex';
+        document.getElementById('d-acc-email').textContent = data.authorize.email;
+        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+        updateMartingaleLabels();
+        runScanner();
+      }
+    }
+
+    if(data.msg_type === 'balance') {
+      if(!data.error && data.balance) {
+        document.getElementById('d-acc-balance').textContent = `$${parseFloat(data.balance.balance).toLocaleString('en-US',{minimumFractionDigits:2})}`;
+      }
+    }
+
+    // 📥 ระบบอนุมัติตั๋วล่วงหน้า (Proposal Contract) เพื่อคำนวณราคานาทีแท้
+    if (data.msg_type === 'proposal') {
+      if (data.error) {
+        console.error("Proposal Error:", data.error.message);
+        globalOrderLock = false; currentlyTradingSymbol = null; updateLockBanner();
+      } else if (data.proposal && data.req_id === activeProposalReqId) {
+        ws.send(JSON.stringify({ buy: data.proposal.id, price: data.proposal.ask_price }));
+      }
+    }
+
+    if (data.msg_type === 'buy') {
+      if(data.error) {
+        globalOrderLock = false; currentlyTradingSymbol = null; updateLockBanner();
+      } else {
+        const buyInfo = data.buy;
+        // ติดตามสัญญาเปิดจนกว่าดีลนาทีจะตัดตัวจบ
+        ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: buyInfo.contract_id, subscribe: 1 }));
+      }
+    }
+
+    if (data.msg_type === 'proposal_open_contract') {
+      if (data.proposal_open_contract) {
+        const poc = data.proposal_open_contract;
+        if (poc.is_expired || poc.status !== 'open') {
+          ws.send(JSON.stringify({ forget: poc.id }));
+          processResolution(poc.symbol, poc.status);
         }
       }
+    }
 
-      s.resolvedContracts.unshift({
-        id: c.id, dir: c.dir, entryPrice: c.entryPrice, exitPrice: currentPrice, result: result, step: c.step, stakeValue: c.stakeValue, resolvedAt: new Date()
-      });
-    });
+    if(data.msg_type === 'ticks_history') {
+      if(data.candles && data.echo_req.ticks_history) {
+        const key = data.echo_req.ticks_history;
+        rawCandlesCache[key] = data.candles;
+        processAssetAnalysis(key, data.candles);
+      }
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('deriv-status').textContent = 'DISCONNECTED';
+    isAuthorized = false;
+  };
+}
+
+function updateLockBanner() {
+  const banner = document.getElementById('global-lock-banner');
+  if(globalOrderLock) {
+    banner.textContent = `PORT STATUS: LOCKED 🔒 (TRADING ${currentlyTradingSymbol})`;
+    banner.style.color = 'var(--red)';
+  } else {
+    banner.textContent = "PORT STATUS: READY 🟢";
+    banner.style.color = 'var(--green)';
+  }
+}
+
+function updateMartingaleLabels() {
+  const nextStake = parseFloat((baseStake * Math.pow(2.0, globalStepCount)).toFixed(2));
+  document.getElementById('d-next-stake').textContent = `$${nextStake.toFixed(2)} (M-${globalStepCount+1})`;
+}
+
+// 🌍 ลอจิกส่งตั๋วนาทีล่วงหน้าเพื่อเคลียร์ Rejection
+function triggerDerivProposalOrder(symbol, direction) {
+  if (globalOrderLock || !isAuthorized) return;
+
+  globalOrderLock = true;
+  currentlyTradingSymbol = symbol;
+  updateLockBanner();
+
+  const currentStake = parseFloat((baseStake * Math.pow(2.0, globalStepCount)).toFixed(2));
+  
+  // แปลงค่าเวลาสัญญาเป็นหน่วยนาทีจริงสอดคล้องกับแท่งเทียนที่วิเคราะห์
+  const durationMinutes = (tf === '15') ? 3 : (tf === '60' ? 15 : 45); 
+  const contractType = direction === 'buy' ? 'RISE' : 'FALL'; // หลีกเลี่ยงข้อจำกัด Barrier ของ CALL/PUT
+
+  activeProposalReqId = 'req-' + Date.now();
+  const proposalPayload = {
+    proposal: 1,
+    amount: currentStake,
+    basis: 'stake',
+    contract_type: contractType,
+    currency: 'USD',
+    duration: durationMinutes,
+    duration_unit: 'm',
+    symbol: symbol,
+    req_id: activeProposalReqId
+  };
+  
+  ws.send(JSON.stringify(proposalPayload));
+  logSignalToTerminal(symbol, direction, currentStake);
+}
+
+function processResolution(symbol, status) {
+  const isWin = (status === 'won');
+  
+  if(isWin) {
+    globalStepCount = 0; 
+  } else {
+    globalStepCount++;
+    if(globalStepCount >= 5) globalStepCount = 0; // ลิมิตเพดาน 5 ไม้
   }
 
-  ensureState(focusedSymbol); renderPicker(); renderWatchGrid(); renderFocused(focusedSymbol); connectWS();
-</script>
+  // อัปเดตตารางสรุปฝั่งขวา
+  const currentStake = parseFloat((baseStake * Math.pow(2.0, globalStepCount)).toFixed(2));
+  const d = loadDaily();
+  const target = d.entries.find(e => e.asset === symbol && e.result === 'pending');
+  if(target) {
+    target.result = isWin ? 'win' : 'lose';
+    saveDaily(d);
+    renderDaily();
+  }
 
+  globalOrderLock = false;
+  currentlyTradingSymbol = null;
+  updateLockBanner();
+  updateMartingaleLabels();
+  runScanner();
+}
+
+// Math Indicators
+function calcEMA(arr,p){const k=2/(p+1);let e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e;}
+function calcEMASeries(arr,p){const k=2/(p+1);const out=[arr[0]];for(let i=1;i<arr.length;i++)out.push(arr[i]*k+out[i-1]*(1-k));return out;}
+function calcRSI(prices,p=14){
+  if(prices.length<p+1)return 50;
+  let g=0,l=0;
+  for(let i=prices.length-p;i<prices.length;i++){const d=prices[i]-prices[i-1];if(d>0)g+=d;else l+=Math.abs(d);}
+  const ag=g/p,al=l/p;if(al===0)return 100;return 100-(100/(1+ag/al));
+}
+function calcMACD(prices){
+  const e12=calcEMASeries(prices,12),e26=calcEMASeries(prices,26);
+  const ml=e12.map((v,i)=>v-e26[i]);const sig=calcEMASeries(ml,9);
+  return{hist:ml.map((v,i)=>v-sig[i])};
+}
+function calcBB(prices,p=20,mult=2){
+  const sl=prices.slice(-p);const mean=sl.reduce((a,b)=>a+b,0)/p;
+  const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/p);
+  return{upper:mean+mult*sd,mid:mean,lower:mean-mult*sd};
+}
+
+// CANDLE ANALYSIS ENGINE 
+function processAssetAnalysis(key, candles) {
+  if(!candles || candles.length < 60) return;
+  
+  const cfg = FILTERS[filterLevel];
+  const closes = candles.map(c => parseFloat(c.close));
+  const cur = closes[closes.length - 1];
+
+  const ema9 = calcEMA(closes, 9), ema21 = calcEMA(closes, 21), ema50 = calcEMA(closes, 50);
+  
+  // 🟢 คำนวณแนวรับแนวต้านแบบ Dynamic Donchian จาก 30 แท่งย้อนหลังบน Deriv
+  const lookbackBars = candles.slice(-32, -2);
+  const highs = lookbackBars.map(b => parseFloat(b.high));
+  const lows = lookbackBars.map(b => parseFloat(b.low));
+  const dynamicResistance = Math.max(...highs);
+  const dynamicSupport = Math.min(...lows);
+
+  let rawDir = 'hold';
+  if(cur > dynamicResistance && cur > ema50 && ema9 > ema21) rawDir = 'buy';
+  if(cur < dynamicSupport && cur < ema50 && ema9 < ema21) rawDir = 'sell';
+
+  let score = 40; 
+  let filtered = false;
+  let reason = 'ยืนยันพฤติกรรมกรอบแท่งเทียน';
+
+  if(rawDir === 'hold') {
+    reason = 'สะสมพลังในกรอบ Donchian';
+  } else {
+    // ฟิลเตอร์คัดกรองสัญญาณ
+    const rsi = calcRSI(closes, 14);
+    if(!((rawDir==='buy'&&rsi>cfg.rsiLo&&rsi<cfg.rsiHi)||(rawDir==='sell'&&rsi<cfg.rsiHi&&rsi>cfg.rsiLo))) {
+      filtered = true; reason = `RSI ${rsi.toFixed(0)} ขัดแย้งกรอบ`;
+    }
+    const {hist} = calcMACD(closes);
+    if(cfg.macdConfirm && hist[hist.length-1] * hist[hist.length-2] < 0) {
+      filtered = true; reason = 'MACD ไซด์เวย์';
+    }
+    
+    // Scoring Calculation
+    if(rawDir==='buy' && cur > ema9) score += 20;
+    if(rawDir==='sell' && cur < ema9) score += 20;
+    score = Math.min(100, score);
+
+    // 🚀 ยิงออเดอร์เข้าพอร์ต Deriv จริงเมื่อผ่านเงื่อนไขและพอร์ตว่าง
+    if(!filtered && !globalOrderLock && isAuthorized) {
+      triggerDerivProposalOrder(key, rawDir);
+    }
+  }
+
+  // อัปเดตอินเตอร์เฟสบนหน้าจอ
+  updateRowUI(key, cur, rawDir, score, filtered, reason, candles);
+}
+
+function updateRowUI(key, price, dir, score, filtered, reason, candles) {
+  const a = ASSETS[key];
+  const dp = a.dp;
+  const pFmt = price.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  
+  let badge = `<span class="dir-badge hold">WAIT</span>`;
+  if(filtered) badge = `<span class="dir-badge filtered">BLOCK</span>`;
+  else if(dir === 'buy') badge = `<span class="dir-badge buy">CALL</span>`;
+  else if(dir === 'sell') badge = `<span class="dir-badge sell">PUT</span>`;
+
+  // วาดสปาร์กไลน์
+  const pricesSub = candles.slice(-12).map(c => parseFloat(c.close));
+  const mn=Math.min(...pricesSub), mx=Math.max(...pricesSub), range=mx-mn||1;
+  const pts=pricesSub.map((p,i)=>`${(i/11)*42},${14-((p-mn)/range)*14}`).join(' ');
+  const col=dir==='buy'?'#00e676':dir==='sell'?'#ff4455':'#555570';
+  const sparkHtml = `<svg class="spark" width="42" height="14" viewBox="0 0 42 14"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`;
+
+  const scoreHtml = (dir!=='hold') ? `<div class="score-wrap"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${score}%;background:var(--gold)"></div></div><span class="score-num">${score}</span></div>` : '—';
+
+  const rowId = `row-${key}`;
+  let tr = document.getElementById(rowId);
+  if(!tr) {
+    tr = document.createElement('tr'); tr.id = rowId;
+    document.getElementById('sigTableBody').appendChild(tr);
+  }
+
+  tr.innerHTML = `<td style="cursor:pointer;font-weight:700;color:var(--blue)" onclick="switchChart('${key}')">${a.name}</td>
+    <td><b>${pFmt}</b>${sparkHtml}</td>
+    <td title="${reason}">${badge}</td>
+    <td>${scoreHtml}</td>`;
+}
+
+// MAIN CONTROL SCANNER VIA DERIV PORT
+async function runScanner(){
+  if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  const granularityMap = {'15': 60, '60': 300, '240': 900};
+  const sec = granularityMap[tf];
+
+  Object.entries(ASSETS).forEach(([key, a]) => {
+    if(a.active) {
+      ws.send(JSON.stringify({
+        ticks_history: key,
+        adjust_start_time: 1,
+        count: 100,
+        end: "latest",
+        granularity: sec,
+        style: "candles"
+      }));
+    }
+  });
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('th-TH');
+}
+
+function runScannerInit() {
+  runScanner();
+  setInterval(runScanner, 12000); 
+}
+
+// CHART AND INTERFACE CONTROLS
+function updateChart(){
+  const i = tf==='15'?'1':tf==='60'?'5':'15';
+  new TradingView.widget({width:"100%",height:"100%",symbol:ASSETS[chartFocus].tv,interval:i,timezone:"Asia/Bangkok",theme:"dark",style:"1",locale:"th",container_id:"tv_chart_container",studies:["RSI@tv-basicstudies","MACD@tv-basicstudies","BB@tv-basicstudies"]});
+}
+function switchChart(key){chartFocus=key;document.getElementById('focusTitle').textContent=`${ASSETS[key].name}`;updateChart();}
+window.toggleAsset=function(key){ASSETS[key].active=!ASSETS[key].active;document.getElementById(`asset-${key}`).classList.toggle('active',ASSETS[key].active);switchChart(key);runScanner();};
+function changeTF(t){tf=t;['tf15','tf60','tf240'].forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(`tf${t}`).classList.add('active');updateChart();runScanner();}
+function setFilter(level){filterLevel=level;['fLoose','fNormal','fTight'].forEach(id=>document.getElementById(id).classList.remove('active'));const map={loose:'fLoose',normal:'fNormal',tight:'fTight'};document.getElementById(map[level]).classList.add('active');document.getElementById('filterInfo').innerHTML=FILTERS[level].desc;runScanner();}
+window.manualRefresh=async function(){runScanner();};
+
+// LOCAL STORAGE STORAGE LOGS
+const DKEY='tve_deriv_daily';
+function todayStr(){return new Date().toLocaleDateString('th-TH',{year:'numeric',month:'2-digit',day:'2-digit'});}
+function loadDaily(){try{const d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d||d.date!==todayStr()){const f={date:todayStr(),entries:[]};localStorage.setItem(DKEY,JSON.stringify(f));return f;}return d;}catch(e){return{date:todayStr(),entries:[]};}}
+function saveDaily(d){localStorage.setItem(DKEY,JSON.stringify(d));}
+
+function logSignalToTerminal(key, dir, stake) {
+  const d = loadDaily();
+  d.entries.push({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    asset: key,
+    dir,
+    stake,
+    result: 'pending'
+  });
+  saveDaily(d);
+  renderDaily();
+}
+
+function renderDaily(){
+  const d=loadDaily();
+  const res=d.entries.filter(e=>e.result!=='pending');
+  const wins=res.filter(e=>e.result==='win').length;const loses=res.filter(e=>e.result==='lose').length;
+  const wr=res.length>0?Math.round(wins/res.length*100):0;
+  
+  document.getElementById('dTotal').textContent=d.entries.length;
+  document.getElementById('dWin').textContent=wins;
+  document.getElementById('dLose').textContent=loses;
+  document.getElementById('dRate').textContent=res.length>0?`${wr}%`:'-';
+  document.getElementById('dWrFill').style.width=`${wr}%`;
+
+  const tbody=document.getElementById('logBody');
+  if(!d.entries.length){tbody.innerHTML='<tr><td colspan="5" class="log-empty">ยังไม่มีสัญญาณยิงพอร์ต</td></tr>';return;}
+  tbody.innerHTML=[...d.entries].reverse().slice(0,10).map(e=>{
+    const dir=e.dir==='buy'?'<span class="d-call">RISE</span>':'<span class="d-put">FALL</span>';
+    let resStr = e.result==='pending'?'<span class="r-pend">RUNNING</span>':(e.result==='win'?'<span class="r-win">WIN</span>':'<span class="r-lose">LOSE</span>');
+    return `<tr><td>${e.time}</td><td>${e.asset}</td><td>${dir}</td><td>$${e.stake}</td><td>${resStr}</td></tr>`;
+  }).join('');
+}
+window.resetDaily=function(){localStorage.removeItem(DKEY);renderDaily();};
+
+updateChart();renderDaily();
+</script>
 </body>
 </html>
