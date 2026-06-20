@@ -258,6 +258,17 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
       <div class="filter-info" id="filterInfo"><b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน</div>
     </div>
 
+    <div class="sec" style="background: rgba(79,195,247,0.02);">
+      <div class="sec-title" style="color: var(--blue)">🧭 ตัวกรองยืนยัน Multi-Timeframe</div>
+      <div class="row-btns">
+        <button class="stake-mode-btn active" id="mtfOn" onclick="setMtfEnabled(true)" style="flex:1;">เปิดใช้งาน</button>
+        <button class="stake-mode-btn" id="mtfOff" onclick="setMtfEnabled(false)" style="flex:1;">ปิด</button>
+      </div>
+      <div class="filter-info" id="mtfInfo" style="margin-top:8px; border-left-color: var(--blue);">
+        หาแนวรับ/แนวต้าน + เทรนด์จาก TF ใหญ่ (<b id="mtfHigherLabel">M15</b>) แล้วให้สัญญาณ TF เล็ก (<b id="mtfLowerLabel">M1</b>) ผ่านได้เฉพาะตอนทะลุแนวรับ/ต้าน <u>พร้อมอยู่ฝั่งเดียวกับเทรนด์ TF ใหญ่</u> เท่านั้น — ถ้าขัดกันจะ BLOCK สัญญาณนั้นทิ้ง
+      </div>
+    </div>
+
     <div class="stats-bar">
       <div class="sstat"><div class="sstat-n" id="stTotal">0</div><div class="sstat-l">สแกน</div></div>
       <div class="sstat"><div class="sstat-n" style="color:var(--green)" id="stSignal">0</div><div class="sstat-l">สัญญาณ</div></div>
@@ -269,7 +280,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
       <div class="sec-title" style="padding-left:16px;">ตารางสแกนสัญญาณสด (คลิกชื่อสัญลักษณ์ที่มีจุดสีเพื่อเปิดกราฟ)</div>
       <div class="signal-wrap">
         <table class="sig-table">
-          <thead><tr><th>สินทรัพย์</th><th>ราคา</th><th>สัญญาณ</th><th>Score</th><th>ดำเนินการ</th></tr></thead>
+          <thead><tr><th>สินทรัพย์</th><th>ราคา</th><th>MTF</th><th>สัญญาณ</th><th>Score</th><th>ดำเนินการ</th></tr></thead>
           <tbody id="sigTableBody"></tbody>
         </table>
       </div>
@@ -351,6 +362,18 @@ const SEEN_KEY = 'tve_seen_signal_ids';
 let seenSignalStamps = new Set();
 
 let tradeLog = [];            // orders YOU confirmed: [{time, asset, dir, stake, result, contractId}]
+
+// ---- Multi-Timeframe confirmation ----
+// Maps the entry TF (left column, what 'tf' already controls) to a higher TF
+// used only to find support/resistance + trend direction for confirmation.
+// granularity values are in seconds (Deriv API format).
+const MTF_MAP = {
+  '15':  { higherGranularity: 900,  higherLabel: 'M15' }, // entry M1  -> higher M15
+  '60':  { higherGranularity: 3600, higherLabel: 'H1'  }, // entry M5  -> higher H1
+  '240': { higherGranularity: 14400, higherLabel: 'H4' }  // entry M15 -> higher H4
+};
+let mtfEnabled = true;
+let higherTfCache = {};   // key -> { resistance, support, trend: 'up'|'down'|'flat', label }
 
 const ASSETS = {
   R_10: { tv: "DERIV:10", sym: "R_10", active: true, name: "Volatility 10", dp: 3 },
@@ -455,7 +478,12 @@ function initFeed() {
 
     if (data.msg_type === 'ticks_history' && data.candles && data.echo_req.ticks_history) {
       const key = data.echo_req.ticks_history;
-      processAssetAnalysis(key, data.candles);
+      const reqId = data.echo_req.req_id || '';
+      if (reqId.startsWith('mtf-')) {
+        processHigherTfCandles(key, data.candles);
+      } else {
+        processAssetAnalysis(key, data.candles);
+      }
     }
   };
 
@@ -525,6 +553,30 @@ function calcATR(candles, p = 14) {
   return trs.slice(-p).reduce((a, b) => a + b, 0) / p;
 }
 
+// ---------- Higher-TF (MTF) support/resistance + trend, used as a confirmation filter only ----------
+// Does NOT generate its own buy/sell signal — it only confirms or blocks the
+// entry-TF signal already found by processAssetAnalysis().
+function processHigherTfCandles(key, candles) {
+  if (!candles || candles.length < 40) return;
+  const closes = candles.map(c => parseFloat(c.close));
+
+  const lookback = candles.slice(-32, -2);
+  const highs = lookback.map(b => parseFloat(b.high));
+  const lows = lookback.map(b => parseFloat(b.low));
+  const resistance = Math.max(...highs);
+  const support = Math.min(...lows);
+
+  const ema9 = calcEMA(closes, 9), ema21 = calcEMA(closes, 21);
+  let trend = 'flat';
+  if (ema9 > ema21) trend = 'up';
+  else if (ema9 < ema21) trend = 'down';
+
+  higherTfCache[key] = {
+    resistance, support, trend,
+    label: (MTF_MAP[tf] || {}).higherLabel || ''
+  };
+}
+
 // ---------- Same signal logic as before, display-only outcome ----------
 function processAssetAnalysis(key, candles) {
   if (!candles || candles.length < 60) return;
@@ -548,21 +600,40 @@ function processAssetAnalysis(key, candles) {
   let score = 40;
   let filtered = false;
   let reason = 'ยืนยันพื้นที่วิ่งราคาเคลียร์ปลอดภัย';
+  let mtfInfo = null; // for display: { label, trend, resistance, support }
 
   if (rawDir === 'hold') {
     reason = 'สะสมพลังในกรอบ Donchian';
   } else {
+    // ---- MTF confirmation: requires breakout direction to agree with the higher-TF trend ----
+    const htf = higherTfCache[key];
+    if (mtfEnabled && MTF_MAP[tf]) {
+      if (!htf) {
+        filtered = true;
+        reason = `MTF: รอข้อมูล ${MTF_MAP[tf].higherLabel} โหลดอยู่`;
+      } else {
+        mtfInfo = { label: htf.label, trend: htf.trend, resistance: htf.resistance, support: htf.support };
+        if (rawDir === 'buy' && htf.trend !== 'up') {
+          filtered = true;
+          reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็น${htf.trend === 'down' ? 'ขาลง' : 'ไซด์เวย์'} ขัดกับ CALL`;
+        } else if (rawDir === 'sell' && htf.trend !== 'down') {
+          filtered = true;
+          reason = `MTF BLOCK: เทรนด์ ${htf.label} เป็น${htf.trend === 'up' ? 'ขาขึ้น' : 'ไซด์เวย์'} ขัดกับ PUT`;
+        }
+      }
+    }
+
     const atr = calcATR(candles, 14);
     const bb = calcBB(closes, 20, 2);
     const requiredBuffer = atr * atrSpaceMultiplier;
 
-    if (rawDir === 'buy') {
+    if (!filtered && rawDir === 'buy') {
       const distanceToCeiling = bb.upper - cur;
       if (distanceToCeiling < requiredBuffer) {
         filtered = true;
         reason = `BLOCK: ใกล้ต้านบน (พื้นที่วิ่ง ${(distanceToCeiling / atr).toFixed(1)}x ATR)`;
       }
-    } else if (rawDir === 'sell') {
+    } else if (!filtered && rawDir === 'sell') {
       const distanceToFloor = cur - bb.lower;
       if (distanceToFloor < requiredBuffer) {
         filtered = true;
@@ -581,6 +652,7 @@ function processAssetAnalysis(key, candles) {
 
     if (rawDir === 'buy' && cur > ema9) score += 20;
     if (rawDir === 'sell' && cur < ema9) score += 20;
+    if (!filtered && mtfInfo) score += 15; // bonus for passing MTF confirmation
     score = Math.min(100, score);
   }
 
@@ -593,7 +665,7 @@ function processAssetAnalysis(key, candles) {
     delete activeSignals[key];
   }
 
-  updateRowUI(key, cur, rawDir, score, filtered, reason, candles);
+  updateRowUI(key, cur, rawDir, score, filtered, reason, candles, mtfInfo);
   updateAssetButtonBadge(key);
 }
 
@@ -652,7 +724,7 @@ function updateAssetButtonBadge(key) {
 }
 
 // ---------- Row UI ----------
-function updateRowUI(key, price, dir, score, filtered, reason, candles) {
+function updateRowUI(key, price, dir, score, filtered, reason, candles, mtfInfo) {
   const a = ASSETS[key];
   const dp = a.dp;
   const pFmt = price.toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: dp });
@@ -674,6 +746,16 @@ function updateRowUI(key, price, dir, score, filtered, reason, candles) {
   const dotClass = !hasLiveSignal ? 'none' : (dir === 'buy' ? 'buy' : 'sell');
   const focusedClass = (chartFocus === key) ? 'focused' : '';
 
+  // MTF trend badge: shows the higher-TF trend that confirmed (or didn't) this signal.
+  let mtfHtml = '<span style="color:var(--muted);font-size:9px;">—</span>';
+  const htfRef = mtfInfo || higherTfCache[key];
+  if (mtfEnabled && htfRef) {
+    const trendArrow = htfRef.trend === 'up' ? '▲' : (htfRef.trend === 'down' ? '▼' : '–');
+    const trendColor = htfRef.trend === 'up' ? 'var(--green)' : (htfRef.trend === 'down' ? 'var(--red)' : 'var(--text2)');
+    const srTitle = `${htfRef.label} R:${htfRef.resistance ? htfRef.resistance.toFixed(a.dp) : '-'} S:${htfRef.support ? htfRef.support.toFixed(a.dp) : '-'}`;
+    mtfHtml = `<span style="color:${trendColor};font-family:'Space Mono',monospace;font-size:9px;font-weight:700;" title="${srTitle}">${htfRef.label} ${trendArrow}</span>`;
+  }
+
   const rowId = `row-${key}`;
   let tr = document.getElementById(rowId);
   if (!tr) {
@@ -692,6 +774,7 @@ function updateRowUI(key, price, dir, score, filtered, reason, candles) {
 
   tr.innerHTML = `<td><span class="sym-cell ${focusedClass}" onclick="switchChart('${key}')" title="${reason}"><span class="signal-dot ${dotClass}"></span>${a.name}</span></td>
     <td><b>${pFmt}</b>${sparkHtml}</td>
+    <td>${mtfHtml}</td>
     <td title="${reason}">${badge}</td>
     <td>${scoreHtml}</td>
     <td>${actionHtml}</td>`;
@@ -813,6 +896,21 @@ async function runScanner() {
       granularity: sec,
       style: "candles"
     }));
+
+    // Higher-timeframe candles for MTF support/resistance + trend confirmation.
+    // Tagged with a 'mtf-' req_id prefix so the response handler can tell it
+    // apart from the entry-TF request above (Deriv echoes req_id back to us).
+    if (mtfEnabled && MTF_MAP[tf]) {
+      ws.send(JSON.stringify({
+        ticks_history: key,
+        adjust_start_time: 1,
+        count: 100,
+        end: "latest",
+        granularity: MTF_MAP[tf].higherGranularity,
+        style: "candles",
+        req_id: `mtf-${key}-${Date.now()}`
+      }));
+    }
   });
 
   setTimeout(() => {
@@ -866,8 +964,26 @@ function changeTF(t) {
   tf = t;
   ['tf15', 'tf60', 'tf240'].forEach(id => document.getElementById(id).classList.remove('active'));
   document.getElementById(`tf${t}`).classList.add('active');
+  higherTfCache = {}; // old higher-TF data no longer matches the new pairing
+  updateMtfLabels();
   updateChart(); runScanner();
 }
+
+const TF_LOWER_LABEL = { '15': 'M1', '60': 'M5', '240': 'M15' };
+function updateMtfLabels() {
+  const mapEntry = MTF_MAP[tf];
+  document.getElementById('mtfHigherLabel').textContent = mapEntry ? mapEntry.higherLabel : '-';
+  document.getElementById('mtfLowerLabel').textContent = TF_LOWER_LABEL[tf] || '-';
+}
+
+function setMtfEnabled(on) {
+  mtfEnabled = on;
+  document.getElementById('mtfOn').classList.toggle('active', on);
+  document.getElementById('mtfOff').classList.toggle('active', !on);
+  if (!on) higherTfCache = {};
+  runScanner();
+}
+
 function setFilter(level) {
   filterLevel = level;
   ['fLoose', 'fNormal', 'fTight'].forEach(id => document.getElementById(id).classList.remove('active'));
