@@ -1018,6 +1018,32 @@ renderTradeLog();
 updateStakeSettings();
 initFeed();
 setInterval(runScanner, 12000);
+  function autoExecuteTrade(symbol, dir) {
+  // ตรวจสอบความปลอดภัย: ยิงได้ไม้ละครั้งต่อการสแกนรอบนั้น
+  const stamp = `${symbol}_${dir}_auto_fired`;
+  if (seenSignalStamps.has(stamp)) return;
+  seenSignalStamps.add(stamp);
+  
+  const stake = calcSuggestedStake();
+  const durationMinutes = (tf === '15') ? 3 : (tf === '60' ? 15 : 45);
+  const contractType = dir === 'buy' ? 'RISE' : 'FALL';
+  
+  activeProposalReqId = 'auto-' + Date.now();
+  ws.send(JSON.stringify({
+    proposal: 1,
+    amount: stake,
+    basis: 'stake',
+    contract_type: contractType,
+    currency: 'USD',
+    duration: durationMinutes,
+    duration_unit: 'm',
+    symbol: symbol,
+    req_id: activeProposalReqId
+  }));
+  
+  // บันทึกการยิงอัตโนมัติลง Log เพื่อให้รู้ว่ายิงไปแล้ว
+  logConfirmedTrade(symbol, dir, stake);
+}
 </script>
 </body>
 </html>
