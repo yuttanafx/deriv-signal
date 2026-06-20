@@ -66,13 +66,15 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
 .sstat:last-child{border-right:none;}
 .sstat-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--gold);}
 .sstat-l{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;}
+
+/* 📊 ปรับปรุงหน้าตารางล่างให้รองรับการกดเปิดชาร์ตได้แม่นยำ */
 .sig-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:10px;}
-.sig-table th{text-align:left;padding:5px 7px;color:var(--muted);border-bottom:1px solid var(--border);font-size:8px;text-transform:uppercase;}
-.sig-table td{padding:6px 7px;border-bottom:1px solid rgba(28,28,42,0.6);vertical-align:middle;}
+.sig-table th{text-align:left;padding:7px 7px;color:var(--muted);border-bottom:1px solid var(--border);font-size:8px;text-transform:uppercase;}
+.sig-table td{padding:8px 7px;border-bottom:1px solid rgba(28,28,42,0.6);vertical-align:middle;}
 .sig-table tr:hover td{background:rgba(255,255,255,0.02);}
 .dir-badge{padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;display:inline-block;}
-.dir-badge.buy{background:var(--green-dim);color:var(--green);}
-.dir-badge.sell{background:var(--red-dim);color:var(--red);}
+.dir-badge.buy{background:var(--green-dim);color:var(--green);box-shadow: 0 0 6px rgba(0,230,118,0.25);}
+.dir-badge.sell{background:var(--red-dim);color:var(--red);box-shadow: 0 0 6px rgba(255,68,85,0.25);}
 .dir-badge.hold{background:var(--panel2);color:var(--text2);}
 .dir-badge.filtered{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,152,0,0.2);}
 .score-wrap{display:flex;align-items:center;gap:5px;}
@@ -117,7 +119,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
 </head>
 <body>
 <div class="header">
-  <div class="logo">◈ TVE OPTIONS MATRIX <small>Deriv Candle Engine v3 · ATR Safe Target Matrix</small></div>
+  <div class="logo">◈ TVE OPTIONS MATRIX <small>Deriv Candle Engine v3 · Live Dynamic Channel Matrix</small></div>
   <div class="header-right">
     <div class="live-badge"><div class="live-dot"></div><span id="deriv-status">DISCONNECTED</span></div>
     <div id="lastUpdate">—</div>
@@ -128,7 +130,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
     <div class="price-bar">
       <div class="price-label" id="global-lock-banner" style="color:var(--green)">PORT STATUS: READY 🟢</div>
       <div class="price-title" id="focusTitle">R_75</div>
-      <div class="price-sub">Candle Analysis Scan · Donchian Target Filter · ตรวจสอบระยะคงเหลือเคลียร์ต้าน-รับถัดไป</div>
+      <div class="price-sub">Candle Analysis Scan · Donchian Target Filter · คลิกชื่อคู่เงินในตารางด้านล่างเพื่อเปิดชาร์ต</div>
     </div>
     <div class="chart-container-tv" id="tv_chart_container"></div>
   </div>
@@ -185,7 +187,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
     </div>
 
     <div class="sec">
-      <div class="sec-title">สินทรัพย์ที่ตรวจสัญญาณ (Deriv Synthetic)</div>
+      <div class="sec-title">สินทรัพย์ที่เลือกตรวจจับสัญญาณ</div>
       <div class="asset-grid">
         <button class="asset-btn active" id="asset-R_10" onclick="toggleAsset('R_10')">Volatility 10 <span class="tbadge">R_10</span></button>
         <button class="asset-btn active" id="asset-R_25" onclick="toggleAsset('R_25')">Volatility 25 <span class="tbadge">R_25</span></button>
@@ -212,13 +214,16 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
       </div>
       <div class="filter-info" id="filterInfo"><b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน</div>
     </div>
+    
     <div class="stats-bar">
       <div class="sstat"><div class="sstat-n" id="stTotal">0</div><div class="sstat-l">สแกน</div></div>
       <div class="sstat"><div class="sstat-n" style="color:var(--green)" id="stSignal">0</div><div class="sstat-l">สัญญาณ</div></div>
       <div class="sstat"><div class="sstat-n" style="color:var(--orange)" id="stFiltered">0</div><div class="sstat-l">กรองออก</div></div>
       <div class="sstat"><div class="sstat-n" style="color:var(--blue)" id="stRate">-</div><div class="sstat-l">Signal%</div></div>
     </div>
-    <div class="sec" style="flex:1;padding:10px 0 0;">
+
+    <div class="sec" style="flex:1; padding:10px 0 0;">
+      <div class="sec-title" style="padding-left:16px;">ตารางสแกนสัญญาณสด (คลิกชื่อสัญลักษณ์เพื่อเปิดชาร์ต)</div>
       <div class="signal-wrap">
         <table class="sig-table">
           <thead><tr><th>สินทรัพย์</th><th>ราคาปัจจุบัน</th><th>สัญญาณ</th><th>Score/100</th></tr></thead>
@@ -226,6 +231,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
         </table>
       </div>
     </div>
+
     <div class="daily-panel">
       <div class="daily-hdr">
         <span class="daily-title">สรุปพูลมาติงเกลประจำเซสชัน</span>
@@ -269,7 +275,7 @@ let activeProposalReqId = null;
 
 let martingaleMultiplier = 2.0;
 let allowedMaxSteps = 5;
-let atrSpaceMultiplier = 1.5; // ค่าสัมประสิทธิ์คูณ ATR ล็อกขอบเขตวิ่งของราคา
+let atrSpaceMultiplier = 1.5; 
 
 let state = {};
 let rawCandlesCache = {}; 
@@ -528,7 +534,7 @@ function processAssetAnalysis(key, candles) {
   if(rawDir === 'hold') {
     reason = 'สะสมพลังในกรอบ Donchian';
   } else {
-    // 🌌 ลอจิกตัวกรอง ATR Safe Buffer Matrix (คำนวณระยะเคลื่อนที่คงเหลือก่อนชนแบริเออร์ถัดไป)
+    // ลอจิกตัวกรอง ATR Safe Buffer Matrix
     const atr = calcATR(candles, 14);
     const bb = calcBB(closes, 20, 2);
     const requiredBuffer = atr * atrSpaceMultiplier;
@@ -537,20 +543,19 @@ function processAssetAnalysis(key, candles) {
       const distanceToCeiling = bb.upper - cur;
       if (distanceToCeiling < requiredBuffer) {
         filtered = true;
-        reason = `BLOCK: ติดแนวต้านถัดไป (พื้นที่วิ่งเหลือ ${ (distanceToCeiling/atr).toFixed(1) }x ATR < ${atrSpaceMultiplier}x)`;
+        reason = `BLOCK: ใกล้ต้านบน (พื้นที่วิ่ง ${ (distanceToCeiling/atr).toFixed(1) }x ATR)`;
       }
     } else if (rawDir === 'sell') {
       const distanceToFloor = cur - bb.lower;
       if (distanceToFloor < requiredBuffer) {
         filtered = true;
-        reason = `BLOCK: ติดแนวรับถัดไป (พื้นที่วิ่งเหลือ ${ (distanceToFloor/atr).toFixed(1) }x ATR < ${atrSpaceMultiplier}x)`;
+        reason = `BLOCK: ใกล้รับล่าง (พื้นที่วิ่ง ${ (distanceToFloor/atr).toFixed(1) }x ATR)`;
       }
     }
 
-    // ฟิลเตอร์คัดกรองสัญญาณร่วมตัวอื่น
     const rsi = calcRSI(closes, 14);
     if(!filtered && !((rawDir==='buy'&&rsi>cfg.rsiLo&&rsi<cfg.rsiHi)||(rawDir==='sell'&&rsi<cfg.rsiHi&&rsi>cfg.rsiLo))) {
-      filtered = true; reason = `RSI ${rsi.toFixed(0)} ชนเขต Overbought/Oversold`;
+      filtered = true; reason = `RSI ${rsi.toFixed(0)} ขัดแย้งกรอบ`;
     }
     const {hist} = calcMACD(closes);
     if(!filtered && cfg.macdConfirm && hist[hist.length-1] * hist[hist.length-2] < 0) {
@@ -569,6 +574,7 @@ function processAssetAnalysis(key, candles) {
   updateRowUI(key, cur, rawDir, score, filtered, reason, candles);
 }
 
+// 🌐 อัปเดตโครงสร้างฟังก์ชันเพื่อผูกลิงก์คลิกเปลี่ยนชาร์ตกราฟอัตโนมัติ
 function updateRowUI(key, price, dir, score, filtered, reason, candles) {
   const a = ASSETS[key];
   const dp = a.dp;
@@ -594,7 +600,8 @@ function updateRowUI(key, price, dir, score, filtered, reason, candles) {
     document.getElementById('sigTableBody').appendChild(tr);
   }
 
-  tr.innerHTML = `<td style="cursor:pointer;font-weight:700;color:var(--blue)" onclick="switchChart('${key}')">${a.name}</td>
+  // ⚡ FIX: ผูกเหตุการณ์ onclick เข้ากับชื่อสินทรัพย์โดยตรง เมื่อผู้ใช้คลิกจะวิ่งไปสั่ง switchChart() ฝั่งซ้ายทันที
+  tr.innerHTML = `<td style="cursor:pointer; font-weight:700; color:var(--blue); text-decoration: underline;" onclick="switchChart('${key}')">${a.name}</td>
     <td><b>${pFmt}</b>${sparkHtml}</td>
     <td title="${reason}">${badge}</td>
     <td>${scoreHtml}</td>`;
@@ -602,21 +609,40 @@ function updateRowUI(key, price, dir, score, filtered, reason, candles) {
 
 async function runScanner(){
   if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  const activeKeys = Object.entries(ASSETS).filter(([,a])=>a.active).map(([k])=>k);
   const granularityMap = {'15': 60, '60': 300, '240': 900};
   const sec = granularityMap[tf];
 
-  Object.entries(ASSETS).forEach(([key, a]) => {
-    if(a.active) {
-      ws.send(JSON.stringify({
-        ticks_history: key,
-        adjust_start_time: 1,
-        count: 100,
-        end: "latest",
-        granularity: sec,
-        style: "candles"
-      }));
+  // อัปเดตและทำความสะอาดตารางสำหรับตัวแปรที่ปิดใช้งาน
+  const tbody = document.getElementById('sigTableBody');
+  Object.keys(ASSETS).forEach(k => {
+    if(!ASSETS[k].active) {
+      const el = document.getElementById(`row-${k}`);
+      if(el) el.remove();
     }
   });
+
+  // ลูปส่งขอข้อมูลแท่งเทียนเฉพาะตัวที่เลือก Active
+  activeKeys.forEach(key => {
+    ws.send(JSON.stringify({
+      ticks_history: key,
+      adjust_start_time: 1,
+      count: 100,
+      end: "latest",
+      granularity: sec,
+      style: "candles"
+    }));
+  });
+
+  let totalScan = activeKeys.length;
+  let totalSignals = tbody.querySelectorAll('.buy, .sell').length;
+  let totalFiltered = tbody.querySelectorAll('.filtered').length;
+
+  document.getElementById('stTotal').textContent = totalScan;
+  document.getElementById('stSignal').textContent = totalSignals;
+  document.getElementById('stFiltered').textContent = totalFiltered;
+  document.getElementById('stRate').textContent = totalScan > 0 ? `${Math.round(totalSignals/totalScan*100)}%` : '-';
   document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('th-TH');
 }
 
@@ -671,8 +697,10 @@ function renderDaily(){
 }
 window.resetDaily=function(){localStorage.removeItem(DKEY);renderDaily();};
 
+// START ENGINE LIFE LOOP
 updateChart(); renderDaily();
 updateMartingaleLabels();
+setInterval(runScanner, 12000); // ตั้งค่าลูปรันสแกนอัตโนมัติทุก 12 วินาที
 </script>
 </body>
 </html>
