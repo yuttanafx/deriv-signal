@@ -139,6 +139,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
 .r-lose{color:var(--red);font-weight:700;}
 .r-pend{color:var(--gold);font-size:8px;}
 </style>
+<script src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
 <div class="header">
@@ -830,6 +831,11 @@ async function runScanner() {
 
 // ---------- Chart ----------
 function updateChart() {
+  if (typeof TradingView === 'undefined') {
+    // tv.js hasn't finished loading yet — retry shortly instead of failing silently.
+    setTimeout(updateChart, 300);
+    return;
+  }
   const i = tf === '15' ? '1' : tf === '60' ? '5' : '15';
   document.getElementById('tv_chart_container').innerHTML = '';
   new TradingView.widget({
