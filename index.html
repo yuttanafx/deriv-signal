@@ -2,98 +2,705 @@
 <html lang="th">
 <head> 
 <meta charset="UTF-8">
-<title>TVE Options Matrix · Realtime Pro Engine</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TVE Options Matrix · Deriv Pro Engine v3</title>
 <style>
-  :root{--bg:#08080d;--panel:#0f0f16;--gold:#f5c842;--green:#00e676;--red:#ff4455;--border:#1c1c2a;--text:#e0e0ee;}
-  body{background:var(--bg);color:var(--text);font-family:sans-serif;margin:0;overflow:hidden;}
-  .layout{display:grid;grid-template-columns:1fr 360px;height:100vh;}
-  .left{background:#000;display:flex;flex-direction:column;}
-  #tv_chart_container{flex:1;}
-  .sidebar{background:var(--panel);border-left:1px solid var(--border);padding:15px;overflow-y:auto;}
-  .sig-table{width:100%;border-collapse:collapse;font-size:11px;}
-  .sig-table td{padding:10px;border-bottom:1px solid var(--border);}
-  .buy{color:var(--green);} .sell{color:var(--red);}
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+:root{
+  --bg:#08080d;--panel:#0f0f16;--panel2:#14141e;--border:#1c1c2a;
+  --gold:#f5c842;--gold-dim:rgba(245,200,66,0.10);
+  --green:#00e676;--green-dim:rgba(0,230,118,0.10);
+  --red:#ff4455;--red-dim:rgba(255,68,85,0.10);
+  --blue:#4fc3f7;--blue-dim:rgba(79,195,247,0.10);
+  --orange:#ff9800;--orange-dim:rgba(255,152,0,0.10);
+  --muted:#44445a;--text:#e0e0ee;--text2:#7070a0;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid var(--border);background:var(--panel);gap:12px;}
+.logo{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:var(--gold);white-space:nowrap;}
+.logo small{color:var(--text2);font-size:10px;font-weight:400;margin-left:6px;}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.live-badge{display:flex;align-items:center;gap:5px;background:var(--green-dim);border:1px solid rgba(0,230,118,0.25);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--green);font-family:'Space Mono',monospace;}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 1.5s ease-in-out infinite;}
+#lastUpdate{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+.layout{display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 49px);}
+@media(max-width:900px){.layout{grid-template-columns:1fr;height:auto;}}
+.left{display:flex;flex-direction:column;overflow:hidden;background:#000;}
+.chart-container-tv{flex:1;width:100%;min-height:420px;}
+.price-bar{padding:14px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,var(--panel),var(--bg));}
+.price-label{font-size:9px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:3px;}
+.price-title{font-family:'Space Mono',monospace;font-size:20px;font-weight:700;color:var(--gold);}
+.price-sub{font-size:10px;color:var(--text2);margin-top:2px;}
+.sidebar{border-left:1px solid var(--border);background:var(--panel);overflow-y:auto;display:flex;flex-direction:column;}
+.sidebar::-webkit-scrollbar{width:3px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.sec{padding:14px 16px;border-bottom:1px solid var(--border);}
+.sec-title{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;font-family:'Space Mono',monospace;margin-bottom:10px;}
+.asset-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.asset-btn{padding:8px 10px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s;}
+.asset-btn .tbadge{font-size:7px;background:var(--bg);padding:2px 4px;border-radius:3px;color:var(--muted);}
+.asset-btn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.asset-btn.active .tbadge{background:var(--gold);color:var(--bg);}
+.row-btns{display:flex;gap:5px;margin-bottom:8px;}
+.rbtn{flex:1;padding:7px;background:var(--panel2);border:1px solid var(--border);color:var(--text2);font-family:'Space Mono',monospace;font-size:10px;font-weight:700;border-radius:5px;cursor:pointer;transition:all 0.15s;text-align:center;}
+.rbtn.active{background:var(--gold-dim);border-color:rgba(245,200,66,0.4);color:var(--gold);}
+.rbtn.fl-loose.active{background:var(--orange-dim);border-color:rgba(255,152,0,0.4);color:var(--orange);}
+.rbtn.fl-tight.active{background:var(--green-dim);border-color:rgba(0,230,118,0.4);color:var(--green);}
+.filter-info{padding:7px 9px;background:var(--panel2);border-radius:5px;font-size:9px;color:var(--text2);font-family:'Space Mono',monospace;border-left:2px solid var(--blue);line-height:1.6;}
+
+/* Deriv Gateway UI */
+.deriv-panel { background: var(--panel2); border: 1px solid var(--border); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+.deriv-select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; width: 100%; }
+.deriv-input { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 7px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 11px; outline: none; }
+.deriv-btn { background: var(--gold); color: var(--bg); border: none; padding: 8px; border-radius: 4px; font-weight: 700; font-size: 11px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; }
+.deriv-logout { background: rgba(255,68,85,0.15); border: 1px solid rgba(255,68,85,0.3); color: var(--red); padding: 6px; border-radius: 4px; font-size: 10px; cursor: pointer; text-align: center; font-weight: 600; margin-top: 4px; }
+
+/* Control Field Panels */
+.ctrl-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.ctrl-field label { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--text2); text-transform: uppercase; }
+
+.stats-bar{display:flex;gap:0;background:var(--panel2);border-bottom:1px solid var(--border);}
+.sstat{flex:1;text-align:center;padding:8px 4px;border-right:1px solid var(--border);}
+.sstat:last-child{border-right:none;}
+.sstat-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;color:var(--gold);}
+.sstat-l{font-family:'Space Mono',monospace;font-size:8px;color:var(--muted);margin-top:1px;}
+
+/* 📊 ปรับปรุงหน้าตารางล่างให้รองรับการกดเปิดชาร์ตได้แม่นยำ */
+.sig-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:10px;}
+.sig-table th{text-align:left;padding:7px 7px;color:var(--muted);border-bottom:1px solid var(--border);font-size:8px;text-transform:uppercase;}
+.sig-table td{padding:8px 7px;border-bottom:1px solid rgba(28,28,42,0.6);vertical-align:middle;}
+.sig-table tr:hover td{background:rgba(255,255,255,0.02);}
+.dir-badge{padding:2px 6px;border-radius:3px;font-weight:700;font-size:9px;display:inline-block;}
+.dir-badge.buy{background:var(--green-dim);color:var(--green);box-shadow: 0 0 6px rgba(0,230,118,0.25);}
+.dir-badge.sell{background:var(--red-dim);color:var(--red);box-shadow: 0 0 6px rgba(255,68,85,0.25);}
+.dir-badge.hold{background:var(--panel2);color:var(--text2);}
+.dir-badge.filtered{background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,152,0,0.2);}
+.score-wrap{display:flex;align-items:center;gap:5px;}
+.score-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden;min-width:36px;}
+.score-bar-fill{height:100%;border-radius:2px;transition:width 0.5s ease;}
+.score-num{font-size:9px;font-weight:700;min-width:20px;text-align:right;}
+.spark{display:inline-block;vertical-align:middle;margin-left:3px;}
+
+.daily-panel{padding:12px 16px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(245,200,66,0.03),transparent);}
+.daily-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.daily-title{font-family:'Space Mono',monospace;font-size:9px;color:var(--gold);letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.daily-rst{font-family:'Space Mono',monospace;font-size:8px;color:var(--red);background:var(--red-dim);border:1px solid rgba(255,68,85,0.2);border-radius:3px;padding:2px 6px;cursor:pointer;}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;}
+.kpi{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:6px 4px;text-align:center;}
+.kpi-n{font-family:'Space Mono',monospace;font-size:16px;font-weight:700;line-height:1;}
+.kpi-l{font-family:'Space Mono',monospace;font-size:7px;color:var(--muted);margin-top:2px;}
+.kpi.total .kpi-n{color:var(--gold);}
+.kpi.win .kpi-n{color:var(--green);}
+.kpi.lose .kpi-n{color:var(--red);}
+.kpi.rate .kpi-n{color:var(--blue);}
+.wr-bar{height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.wr-fill{height:100%;border-radius:3px;transition:width 0.5s ease;}
+.log-wrap{max-height:120px;overflow-y:auto;}
+.log-wrap::-webkit-scrollbar{width:2px;}
+.log-table{width:100%;border-collapse:collapse;font-family:'Space Mono',monospace;font-size:9px;}
+.log-table th{color:var(--muted);padding:3px 4px;text-align:left;font-size:8px;border-bottom:1px solid var(--border);}
+.log-table td{padding:3px 4px;border-bottom:1px solid rgba(28,28,42,0.5);color:var(--text2);}
+.r-win{color:var(--green);font-weight:700;}
+.r-lose{color:var(--red);font-weight:700;}
+.r-pend{color:var(--gold);font-size:8px;}
+.d-call{color:var(--green);}
+.d-put{color:var(--red);}
+.log-empty{text-align:center;padding:14px;color:var(--muted);font-size:9px;}
+
+.refresh-btn{margin:12px 14px;padding:10px;background:var(--gold-dim);border:1px solid rgba(245,200,66,0.25);border-radius:7px;color:var(--gold);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;width:calc(100% - 28px);transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.refresh-btn:hover{background:rgba(245,200,66,0.18);}
+.refresh-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.spin-ic{display:inline-block;}
+.refresh-btn.spinning .spin-ic{animation:spinCW 0.6s linear infinite;}
+@keyframes spinCW{to{transform:rotate(360deg)}}
 </style>
-<script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
 </head>
 <body>
+<div class="header">
+  <div class="logo">◈ TVE OPTIONS MATRIX <small>Deriv Candle Engine v3 · Live Dynamic Channel Matrix</small></div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="deriv-status">DISCONNECTED</span></div>
+    <div id="lastUpdate">—</div>
+  </div>
+</div>
 <div class="layout">
-    <div class="left">
-        <div style="padding:15px; font-weight:bold; color:var(--gold);" id="focusTitle">Volatility 75</div>
-        <div id="tv_chart_container"></div>
+  <div class="left">
+    <div class="price-bar">
+      <div class="price-label" id="global-lock-banner" style="color:var(--green)">PORT STATUS: READY 🟢</div>
+      <div class="price-title" id="focusTitle">R_75</div>
+      <div class="price-sub">Candle Analysis Scan · Donchian Target Filter · คลิกชื่อคู่เงินในตารางด้านล่างเพื่อเปิดชาร์ต</div>
     </div>
-    <div class="sidebar">
-        <h3>Live Analysis (ATR Filtered)</h3>
+    <div class="chart-container-tv" id="tv_chart_container"></div>
+  </div>
+  <div class="sidebar">
+    <div class="sec">
+      <div class="sec-title">แผงควบคุมพอร์ต DERIV (REALTIME GATEWAY)</div>
+      <div class="deriv-panel" id="deriv-gate-inputs">
+        <select class="deriv-select" id="deriv-mode-select">
+          <option value="demo">🧪 บัญชีจำลอง (Demo)</option>
+          <option value="real">💰 บัญชีจริง (Real Account)</option>
+        </select>
+        <input type="password" class="deriv-input" id="deriv-token-input" placeholder="ใส่ Deriv API Token...">
+        <button class="deriv-btn" onclick="connectDerivPort()">เชื่อมต่อ API Gateway</button>
+      </div>
+      <div class="deriv-panel" id="deriv-info-display" style="display:none;">
+        <div style="font-size:11px; font-family:'Space Mono'; color:var(--text)">ID: <b id="d-acc-email">—</b></div>
+        <div style="font-size:13px; font-family:'Space Mono'; color:var(--green)">Balance: <b id="d-acc-balance">$0.00</b></div>
+        <div style="font-size:11px; font-family:'Space Mono'; color:var(--gold)">ไม้ถัดไป (Pool): <b id="d-next-stake">$1.00</b></div>
+        <button class="deriv-logout" onclick="disconnectDerivPort()">🔒 สลับพอร์ต / ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <div class="sec" style="background: rgba(245,200,66,0.01);">
+      <div class="sec-title" style="color: var(--gold)">⚙️ ตั้งค่ามาติงเกลกลาง & ตัวกรอง ATR SPACE</div>
+      
+      <div class="ctrl-field">
+        <label for="m-multiplier-select">📈 ตัวคูณเงินทบมาติงเกล (Multiplier)</label>
+        <select class="deriv-select" id="m-multiplier-select" onchange="updateMartingaleSettings()">
+          <option value="1.5">x1.5 (ทบแบบเน้นถนอมทุน ปลอดภัยสูง)</option>
+          <option value="2.0" selected>x2.0 (ทบแบบเบิ้ลทุน มาตรฐานพูล)</option>
+          <option value="2.5">x2.5 (ทบดึงกำไรครอบคลุมพิเศษ)</option>
+          <option value="3.0">x3.0 (ทบดุดัน ดึงทุนคืนไวสุด)</option>
+        </select>
+      </div>
+
+      <div class="ctrl-field">
+        <label for="m-max-steps-select">🛡️ จำนวนไม้ทบสูงสุด (Martingale Layer Limit)</label>
+        <select class="deriv-select" id="m-max-steps-select" onchange="updateMartingaleSettings()">
+          <option value="3">สูงสุด 3 ไม้ (ความเสี่ยงต่ำ คุม Drawdown ดี)</option>
+          <option value="5" selected>สูงสุด 5 ไม้ (มาตรฐานระบบความแม่นยำ)</option>
+          <option value="7">สูงสุด 7 ไม้ (พอร์ตใหญ่ ทุนหนารองรับแรงเหวี่ยง)</option>
+          <option value="10">สูงสุด 10 ไม้ (เต็มระบบ ไหลตามเทรนด์ยาว)</option>
+        </select>
+      </div>
+
+      <div class="ctrl-field" style="margin-top: 4px;">
+        <label for="atr-space-select">🌌 ระยะทางเคลือนที่คงเหลือ (ATR Safe Buffer)</label>
+        <select class="deriv-select" id="atr-space-select" onchange="updateAtrSettings()">
+          <option value="1.0">อย่างน้อย 1.0 x ATR (เปิดพื้นที่วิ่งระดับปกติ)</option>
+          <option value="1.5" selected>อย่างน้อย 1.5 x ATR (แนะนำ - ปลอดภัยสัญญานาที)</option>
+          <option value="2.0">อย่างน้อย 2.0 x ATR (เข้มงวดสูง คัดเฉพาะไม้ต้นเทรนด์โล่งๆ)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sec-title">สินทรัพย์ที่เลือกตรวจจับสัญญาณ</div>
+      <div class="asset-grid">
+        <button class="asset-btn active" id="asset-R_10" onclick="toggleAsset('R_10')">Volatility 10 <span class="tbadge">R_10</span></button>
+        <button class="asset-btn active" id="asset-R_25" onclick="toggleAsset('R_25')">Volatility 25 <span class="tbadge">R_25</span></button>
+        <button class="asset-btn active" id="asset-R_50" onclick="toggleAsset('R_50')">Volatility 50 <span class="tbadge">R_50</span></button>
+        <button class="asset-btn active" id="asset-R_75" onclick="toggleAsset('R_75')">Volatility 75 <span class="tbadge">R_75</span></button>
+        <button class="asset-btn" id="asset-R_100" onclick="toggleAsset('R_100')">Volatility 100 <span class="tbadge">R_100</span></button>
+        <button class="asset-btn" id="asset-1HZ75V" onclick="toggleAsset('1HZ75V')">Vol 75 (1s) <span class="tbadge">1HZ75V</span></button>
+        <button class="asset-btn" id="asset-1HZ100V" onclick="toggleAsset('1HZ100V')">Vol 100 (1s) <span class="tbadge">1HZ100V</span></button>
+        <button class="asset-btn" id="asset-R_150" onclick="toggleAsset('R_150')">Volatility 150 <span class="tbadge">R_150</span></button>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sec-title">โครงสร้างเวลาแท่งเทียน / เวลาหมดอายุสัญญา</div>
+      <div class="row-btns">
+        <button class="rbtn active" id="tf15" onclick="changeTF('15')">1 MIN (แท่ง M1)</button>
+        <button class="rbtn" id="tf60" onclick="changeTF('60')">5 MIN (แท่ง M5)</button>
+        <button class="rbtn" id="tf240" onclick="changeTF('240')">15 MIN (แท่ง M15)</button>
+      </div>
+      <div class="sec-title" style="margin-top:8px;">ระดับฟิลเตอร์กรองความเสี่ยง</div>
+      <div class="row-btns">
+        <button class="rbtn fl-loose" id="fLoose" onclick="setFilter('loose')">LOOSE</button>
+        <button class="rbtn active" id="fNormal" onclick="setFilter('normal')">NORMAL</button>
+        <button class="rbtn fl-tight" id="fTight" onclick="setFilter('tight')">TIGHT</button>
+      </div>
+      <div class="filter-info" id="filterInfo"><b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน</div>
+    </div>
+    
+    <div class="stats-bar">
+      <div class="sstat"><div class="sstat-n" id="stTotal">0</div><div class="sstat-l">สแกน</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--green)" id="stSignal">0</div><div class="sstat-l">สัญญาณ</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--orange)" id="stFiltered">0</div><div class="sstat-l">กรองออก</div></div>
+      <div class="sstat"><div class="sstat-n" style="color:var(--blue)" id="stRate">-</div><div class="sstat-l">Signal%</div></div>
+    </div>
+
+    <div class="sec" style="flex:1; padding:10px 0 0;">
+      <div class="sec-title" style="padding-left:16px;">ตารางสแกนสัญญาณสด (คลิกชื่อสัญลักษณ์เพื่อเปิดชาร์ต)</div>
+      <div class="signal-wrap">
         <table class="sig-table">
-            <thead><tr><th>สินทรัพย์</th><th>ราคา</th><th>สถานะ</th></tr></thead>
-            <tbody id="sigTableBody"></tbody>
+          <thead><tr><th>สินทรัพย์</th><th>ราคาปัจจุบัน</th><th>สัญญาณ</th><th>Score/100</th></tr></thead>
+          <tbody id="sigTableBody"></tbody>
         </table>
+      </div>
     </div>
+
+    <div class="daily-panel">
+      <div class="daily-hdr">
+        <span class="daily-title">สรุปพูลมาติงเกลประจำเซสชัน</span>
+        <button class="daily-rst" onclick="resetDaily()">ล้างประวัติ</button>
+      </div>
+      <div class="kpi-row">
+        <div class="kpi total"><div class="kpi-n" id="dTotal">0</div><div class="kpi-l">แมตช์ดีล</div></div>
+        <div class="kpi win"><div class="kpi-n" id="dWin">0</div><div class="kpi-l">ชนะ</div></div>
+        <div class="kpi lose"><div class="kpi-n" id="dLose">0</div><div class="kpi-l">แพ้</div></div>
+        <div class="kpi rate"><div class="kpi-n" id="dRate">-</div><div class="kpi-l">Win%</div></div>
+      </div>
+      <div class="wr-bar"><div class="wr-fill" id="dWrFill" style="width:0%"></div></div>
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>เวลา</th><th>คู่เงิน</th><th>ทิศทาง</th><th>ไม้ทบ</th><th>ผลลัพธ์</th></tr></thead>
+          <tbody id="logBody"><tr><td colspan="5" class="log-empty">ยังไม่มีสัญญาณยิงพอร์ต</td></tr></tbody>
+        </table>
+      </div>
+      <div class="auto-note">เทอร์มินอลจะบล็อกการเข้าซื้อซ้อนกันอัตโนมัติ 1 ออเดอร์เดี่ยวทั่วกระดาน</div>
+    </div>
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+      <span class="spin-ic">&#8635;</span><span id="refreshLbl">คัดกรองรอบใหม่ + ล้างแคช API</span>
+    </button>
+  </div>
 </div>
 
 <script>
-// 1. ตั้งค่าสินทรัพย์และ TradingView
-const ASSETS = {
-    R_10: { tv: "DERIV:10", name: "Vol 10" },
-    R_75: { tv: "DERIV:75", name: "Vol 75" }
-};
-let chartFocus = 'R_75';
+window.isUnlocked = true;
 
-function updateChart() {
-    new TradingView.widget({
-        width: "100%", height: "100%",
-        symbol: ASSETS[chartFocus].tv,
-        interval: "1", theme: "dark",
-        container_id: "tv_chart_container"
-    });
+let tf='15', filterLevel='normal', lastSent={}, chartFocus='R_75';
+let ws = null;
+let apiToken = '';
+let isAuthorized = false;
+let accountMode = 'demo';
+let baseStake = 1.0;
+
+let globalStepCount = 0; 
+let globalOrderLock = false; 
+let currentlyTradingSymbol = null;
+let activeProposalReqId = null;
+
+let martingaleMultiplier = 2.0;
+let allowedMaxSteps = 5;
+let atrSpaceMultiplier = 1.5; 
+
+let state = {};
+let rawCandlesCache = {}; 
+
+const ASSETS={
+  R_10:{tv:"DERIV:10",sym:"R_10",active:true,name:"Volatility 10",dp:3},
+  R_25:{tv:"DERIV:25",sym:"R_25",active:true,name:"Volatility 25",dp:3},
+  R_50:{tv:"DERIV:50",sym:"R_50",active:true,name:"Volatility 50",dp:4},
+  R_75:{tv:"DERIV:75",sym:"R_75",active:true,name:"Volatility 75",dp:4},
+  R_100:{tv:"DERIV:100",sym:"R_100",active:false,name:"Volatility 100",dp:2},
+  "1HZ75V":{tv:"DERIV:751S",sym:"1HZ75V",active:false,name:"Vol 75 (1s)",dp:4},
+  "1HZ100V":{tv:"DERIV:1001S",sym:"1HZ100V",active:false,name:"Vol 100 (1s)",dp:2},
+  R_150:{tv:"DERIV:150",sym:"R_150",active:false,name:"Volatility 150",dp:4}
+};
+
+const FILTERS={
+  loose:{rsiLo:25,rsiHi:75,volMul:1.0,bodyMin:0.3,confirmBars:1,atrMin:0.0002,macdConfirm:false,desc:'<b>LOOSE:</b> แท่งเทียนทะลุกรอบ Donchian ขอบนอก + EMA'},
+  normal:{rsiLo:35,rsiHi:65,volMul:1.1,bodyMin:0.45,confirmBars:1,atrMin:0.0005,macdConfirm:true,desc:'<b>NORMAL:</b> EMA+MACD+BB+RSI(35-65)+ATR โครงสร้างเบรคเอาท์แท่งเทียน'},
+  tight:{rsiLo:40,rsiHi:60,volMul:1.3,bodyMin:0.55,confirmBars:2,atrMin:0.0008,macdConfirm:true,desc:'<b>TIGHT:</b> คัดกรองกรอบแคบพิเศษ + แท่งยันยันคู่สองรอบ'},
+};
+
+function connectDerivPort() {
+  const token = document.getElementById('deriv-token-input').value.trim();
+  if(!token) { alert('กรุณาใส่ API Token ของ Deriv ก่อนเชื่อมต่อครับ'); return; }
+  apiToken = token;
+  accountMode = document.getElementById('deriv-mode-select').value;
+  initDerivWebSocket();
 }
 
-// 2. ระบบเชื่อมต่อ Deriv API (WebSocket)
-let ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
-ws.onopen = () => console.log("Deriv Gateway Connected");
-ws.onmessage = (msg) => {
+function disconnectDerivPort() {
+  if(confirm('ต้องการสลับบัญชี/ตัดการเชื่อมต่อพอร์ตหลักใช่ไหมครับ?')) {
+    if(ws) ws.close();
+    apiToken = '';
+    isAuthorized = false;
+    globalOrderLock = false;
+    currentlyTradingSymbol = null;
+    document.getElementById('deriv-gate-inputs').style.display = 'flex';
+    document.getElementById('deriv-info-display').style.display = 'none';
+    document.getElementById('deriv-status').textContent = 'DISCONNECTED';
+    document.getElementById('global-lock-banner').textContent = "PORT STATUS: READY 🟢";
+    document.getElementById('global-lock-banner').style.color = 'var(--green)';
+    updateMartingaleLabels();
+  }
+}
+
+function initDerivWebSocket() {
+  if(ws) { try{ ws.close(); }catch(e){} }
+  ws = new WebSocket("wss://ws.derivws.com/websockets/v3?app_id=1089");
+
+  ws.onopen = () => {
+    document.getElementById('deriv-status').textContent = 'CONNECTING...';
+    if(apiToken) ws.send(JSON.stringify({ authorize: apiToken }));
+  };
+
+  ws.onmessage = (msg) => {
     const data = JSON.parse(msg.data);
-    // รับค่าราคาและตรวจสอบเงื่อนไข ATR ที่นี่
-};
+    
+    if(data.msg_type === 'authorize') {
+      if(data.error) {
+        alert(`Token ผิดพลาด: ${data.error.message}`);
+        ws.close();
+      } else {
+        isAuthorized = true;
+        document.getElementById('deriv-status').textContent = accountMode.toUpperCase() + ' 🟢';
+        document.getElementById('deriv-gate-inputs').style.display = 'none';
+        document.getElementById('deriv-info-display').style.display = 'flex';
+        document.getElementById('d-acc-email').textContent = data.authorize.email;
+        ws.send(JSON.stringify({ balance: 1, subscribe: 1 }));
+        updateMartingaleLabels();
+        runScanner();
+      }
+    }
 
-// 3. ฟังก์ชันยิงออเดอร์ (เมื่อกรองผ่าน)
-function placeOrder(symbol, dir) {
-    console.log(`Executing ${dir} on ${symbol}`);
+    if(data.msg_type === 'balance') {
+      if(!data.error && data.balance) {
+        document.getElementById('d-acc-balance').textContent = `$${parseFloat(data.balance.balance).toLocaleString('en-US',{minimumFractionDigits:2})}`;
+      }
+    }
+
+    if (data.msg_type === 'proposal') {
+      if (data.error) {
+        console.error("Proposal Error:", data.error.message);
+        globalOrderLock = false; currentlyTradingSymbol = null; updateLockBanner();
+      } else if (data.proposal && data.req_id === activeProposalReqId) {
+        ws.send(JSON.stringify({ buy: data.proposal.id, price: data.proposal.ask_price }));
+      }
+    }
+
+    if (data.msg_type === 'buy') {
+      if(data.error) {
+        globalOrderLock = false; currentlyTradingSymbol = null; updateLockBanner();
+      } else {
+        const buyInfo = data.buy;
+        ws.send(JSON.stringify({ proposal_open_contract: 1, contract_id: buyInfo.contract_id, subscribe: 1 }));
+      }
+    }
+
+    if (data.msg_type === 'proposal_open_contract') {
+      if (data.proposal_open_contract) {
+        const poc = data.proposal_open_contract;
+        if (poc.is_expired || poc.status !== 'open') {
+          ws.send(JSON.stringify({ forget: poc.id }));
+          processResolution(poc.symbol, poc.status);
+        }
+      }
+    }
+
+    if(data.msg_type === 'ticks_history') {
+      if(data.candles && data.echo_req.ticks_history) {
+        const key = data.echo_req.ticks_history;
+        rawCandlesCache[key] = data.candles;
+        processAssetAnalysis(key, data.candles);
+      }
+    }
+  };
+
+  ws.onclose = () => {
+    document.getElementById('deriv-status').textContent = 'DISCONNECTED';
+    isAuthorized = false;
+  };
+}
+
+function updateLockBanner() {
+  const banner = document.getElementById('global-lock-banner');
+  if(globalOrderLock) {
+    banner.textContent = `PORT STATUS: LOCKED 🔒 (TRADING ${currentlyTradingSymbol})`;
+    banner.style.color = 'var(--red)';
+  } else {
+    banner.textContent = "PORT STATUS: READY 🟢";
+    banner.style.color = 'var(--green)';
+  }
+}
+
+function updateMartingaleSettings() {
+  martingaleMultiplier = parseFloat(document.getElementById('m-multiplier-select').value);
+  allowedMaxSteps = parseInt(document.getElementById('m-max-steps-select').value);
+  updateMartingaleLabels();
+}
+
+function updateAtrSettings() {
+  atrSpaceMultiplier = parseFloat(document.getElementById('atr-space-select').value);
+}
+
+function updateMartingaleLabels() {
+  const nextStake = parseFloat((baseStake * Math.pow(martingaleMultiplier, globalStepCount)).toFixed(2));
+  document.getElementById('d-next-stake').textContent = `$${nextStake.toFixed(2)} (M-${globalStepCount+1}/${allowedMaxSteps})`;
+}
+
+function triggerDerivProposalOrder(symbol, direction) {
+  if (globalOrderLock || !isAuthorized) return;
+
+  globalOrderLock = true;
+  currentlyTradingSymbol = symbol;
+  updateLockBanner();
+
+  const currentStake = parseFloat((baseStake * Math.pow(martingaleMultiplier, globalStepCount)).toFixed(2));
+  const durationMinutes = (tf === '15') ? 3 : (tf === '60' ? 15 : 45); 
+  const contractType = direction === 'buy' ? 'RISE' : 'FALL';
+
+  activeProposalReqId = 'req-' + Date.now();
+  const proposalPayload = {
+    proposal: 1,
+    amount: currentStake,
+    basis: 'stake',
+    contract_type: contractType,
+    currency: 'USD',
+    duration: durationMinutes,
+    duration_unit: 'm',
+    symbol: symbol,
+    req_id: activeProposalReqId
+  };
+  
+  ws.send(JSON.stringify(proposalPayload));
+  logSignalToTerminal(symbol, direction, currentStake);
+}
+
+function processResolution(symbol, status) {
+  const isWin = (status === 'won');
+  
+  if(isWin) {
+    globalStepCount = 0; 
+  } else {
+    globalStepCount++;
+    if(globalStepCount >= allowedMaxSteps) {
+      globalStepCount = 0;
+    }
+  }
+
+  const d = loadDaily();
+  const target = d.entries.find(e => e.asset === symbol && e.result === 'pending');
+  if(target) {
+    target.result = isWin ? 'win' : 'lose';
+    saveDaily(d);
+    renderDaily();
+  }
+
+  globalOrderLock = false;
+  currentlyTradingSymbol = null;
+  updateLockBanner();
+  updateMartingaleLabels();
+  runScanner();
+}
+
+// Math Core Indicators
+function calcEMA(arr,p){const k=2/(p+1);let e=arr[0];for(let i=1;i<arr.length;i++)e=arr[i]*k+e*(1-k);return e;}
+function calcEMASeries(arr,p){const k=2/(p+1);const out=[arr[0]];for(let i=1;i<arr.length;i++)out.push(arr[i]*k+out[i-1]*(1-k));return out;}
+function calcRSI(prices,p=14){
+  if(prices.length<p+1)return 50;
+  let g=0,l=0;
+  for(let i=prices.length-p;i<prices.length;i++){const d=prices[i]-prices[i-1];if(d>0)g+=d;else l+=Math.abs(d);}
+  const ag=g/p,al=l/p;if(al===0)return 100;return 100-(100/(1+ag/al));
+}
+function calcMACD(prices){
+  const e12=calcEMASeries(prices,12),e26=calcEMASeries(prices,26);
+  const ml=e12.map((v,i)=>v-e26[i]);const sig=calcEMASeries(ml,9);
+  return{hist:ml.map((v,i)=>v-sig[i])};
+}
+function calcBB(prices,p=20,mult=2){
+  const sl=prices.slice(-p);const mean=sl.reduce((a,b)=>a+b,0)/p;
+  const sd=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/p);
+  return{upper:mean+mult*sd,mid:mean,lower:mean-mult*sd};
+}
+function calcATR(candles,p=14){
+  const trs=[];
+  for(let i=1;i<candles.length;i++){
+    const h=parseFloat(candles[i].high),l=parseFloat(candles[i].low),pc=parseFloat(candles[i-1].close);
+    trs.push(Math.max(h-l,Math.abs(h-pc),Math.abs(l-pc)));
+  }
+  return trs.slice(-p).reduce((a,b)=>a+b,0)/p;
+}
+
+// ADVANCED ATR MATRIX STRUCTURE ENGINE
+function processAssetAnalysis(key, candles) {
+  if(!candles || candles.length < 60) return;
+  
+  const cfg = FILTERS[filterLevel];
+  const closes = candles.map(c => parseFloat(c.close));
+  const cur = closes[closes.length - 1];
+
+  const ema9 = calcEMA(closes, 9), ema21 = calcEMA(closes, 21), ema50 = calcEMA(closes, 50);
+  
+  const lookbackBars = candles.slice(-32, -2);
+  const highs = lookbackBars.map(b => parseFloat(b.high));
+  const lows = lookbackBars.map(b => parseFloat(b.low));
+  const dynamicResistance = Math.max(...highs);
+  const dynamicSupport = Math.min(...lows);
+
+  let rawDir = 'hold';
+  if(cur > dynamicResistance && cur > ema50 && ema9 > ema21) rawDir = 'buy';
+  if(cur < dynamicSupport && cur < ema50 && ema9 < ema21) rawDir = 'sell';
+
+  let score = 40; 
+  let filtered = false;
+  let reason = 'ยืนยันพื้นที่วิ่งราคาเคลียร์ปลอดภัย';
+
+  if(rawDir === 'hold') {
+    reason = 'สะสมพลังในกรอบ Donchian';
+  } else {
+    // ลอจิกตัวกรอง ATR Safe Buffer Matrix
+    const atr = calcATR(candles, 14);
+    const bb = calcBB(closes, 20, 2);
+    const requiredBuffer = atr * atrSpaceMultiplier;
+
+    if (rawDir === 'buy') {
+      const distanceToCeiling = bb.upper - cur;
+      if (distanceToCeiling < requiredBuffer) {
+        filtered = true;
+        reason = `BLOCK: ใกล้ต้านบน (พื้นที่วิ่ง ${ (distanceToCeiling/atr).toFixed(1) }x ATR)`;
+      }
+    } else if (rawDir === 'sell') {
+      const distanceToFloor = cur - bb.lower;
+      if (distanceToFloor < requiredBuffer) {
+        filtered = true;
+        reason = `BLOCK: ใกล้รับล่าง (พื้นที่วิ่ง ${ (distanceToFloor/atr).toFixed(1) }x ATR)`;
+      }
+    }
+
+    const rsi = calcRSI(closes, 14);
+    if(!filtered && !((rawDir==='buy'&&rsi>cfg.rsiLo&&rsi<cfg.rsiHi)||(rawDir==='sell'&&rsi<cfg.rsiHi&&rsi>cfg.rsiLo))) {
+      filtered = true; reason = `RSI ${rsi.toFixed(0)} ขัดแย้งกรอบ`;
+    }
+    const {hist} = calcMACD(closes);
+    if(!filtered && cfg.macdConfirm && hist[hist.length-1] * hist[hist.length-2] < 0) {
+      filtered = true; reason = 'MACD ไซด์เวย์บีบตัว';
+    }
+    
+    if(rawDir==='buy' && cur > ema9) score += 20;
+    if(rawDir==='sell' && cur < ema9) score += 20;
+    score = Math.min(100, score);
+
+    if(!filtered && !globalOrderLock && isAuthorized) {
+      triggerDerivProposalOrder(key, rawDir);
+    }
+  }
+
+  updateRowUI(key, cur, rawDir, score, filtered, reason, candles);
+}
+
+// 🌐 อัปเดตโครงสร้างฟังก์ชันเพื่อผูกลิงก์คลิกเปลี่ยนชาร์ตกราฟอัตโนมัติ
+function updateRowUI(key, price, dir, score, filtered, reason, candles) {
+  const a = ASSETS[key];
+  const dp = a.dp;
+  const pFmt = price.toLocaleString('en-US',{minimumFractionDigits:dp,maximumFractionDigits:dp});
+  
+  let badge = `<span class="dir-badge hold">WAIT</span>`;
+  if(filtered) badge = `<span class="dir-badge filtered">BLOCK</span>`;
+  else if(dir === 'buy') badge = `<span class="dir-badge buy">CALL</span>`;
+  else if(dir === 'sell') badge = `<span class="dir-badge sell">PUT</span>`;
+
+  const pricesSub = candles.slice(-12).map(c => parseFloat(c.close));
+  const mn=Math.min(...pricesSub), mx=Math.max(...pricesSub), range=mx-mn||1;
+  const pts=pricesSub.map((p,i)=>`${(i/11)*42},${14-((p-mn)/range)*14}`).join(' ');
+  const col=dir==='buy'?'#00e676':dir==='sell'?'#ff4455':'#555570';
+  const sparkHtml = `<svg class="spark" width="42" height="14" viewBox="0 0 42 14"><polyline points="${pts}" fill="none" stroke="${col}" stroke-width="1.5"/></svg>`;
+
+  const scoreHtml = (dir!=='hold') ? `<div class="score-wrap"><div class="score-bar-bg"><div class="score-bar-fill" style="width:${score}%;background:var(--gold)"></div></div><span class="score-num">${score}</span></div>` : '—';
+
+  const rowId = `row-${key}`;
+  let tr = document.getElementById(rowId);
+  if(!tr) {
+    tr = document.createElement('tr'); tr.id = rowId;
+    document.getElementById('sigTableBody').appendChild(tr);
+  }
+
+  // ⚡ FIX: ผูกเหตุการณ์ onclick เข้ากับชื่อสินทรัพย์โดยตรง เมื่อผู้ใช้คลิกจะวิ่งไปสั่ง switchChart() ฝั่งซ้ายทันที
+  tr.innerHTML = `<td style="cursor:pointer; font-weight:700; color:var(--blue); text-decoration: underline;" onclick="switchChart('${key}')">${a.name}</td>
+    <td><b>${pFmt}</b>${sparkHtml}</td>
+    <td title="${reason}">${badge}</td>
+    <td>${scoreHtml}</td>`;
+}
+
+async function runScanner(){
+  if(!ws || ws.readyState !== WebSocket.OPEN) return;
+  
+  const activeKeys = Object.entries(ASSETS).filter(([,a])=>a.active).map(([k])=>k);
+  const granularityMap = {'15': 60, '60': 300, '240': 900};
+  const sec = granularityMap[tf];
+
+  // อัปเดตและทำความสะอาดตารางสำหรับตัวแปรที่ปิดใช้งาน
+  const tbody = document.getElementById('sigTableBody');
+  Object.keys(ASSETS).forEach(k => {
+    if(!ASSETS[k].active) {
+      const el = document.getElementById(`row-${k}`);
+      if(el) el.remove();
+    }
+  });
+
+  // ลูปส่งขอข้อมูลแท่งเทียนเฉพาะตัวที่เลือก Active
+  activeKeys.forEach(key => {
     ws.send(JSON.stringify({
-        proposal: 1,
-        amount: 1,
-        basis: "stake",
-        contract_type: dir === 'buy' ? "CALL" : "PUT",
-        currency: "USD",
-        duration: 1,
-        duration_unit: "m",
-        symbol: symbol
+      ticks_history: key,
+      adjust_start_time: 1,
+      count: 100,
+      end: "latest",
+      granularity: sec,
+      style: "candles"
     }));
+  });
+
+  let totalScan = activeKeys.length;
+  let totalSignals = tbody.querySelectorAll('.buy, .sell').length;
+  let totalFiltered = tbody.querySelectorAll('.filtered').length;
+
+  document.getElementById('stTotal').textContent = totalScan;
+  document.getElementById('stSignal').textContent = totalSignals;
+  document.getElementById('stFiltered').textContent = totalFiltered;
+  document.getElementById('stRate').textContent = totalScan > 0 ? `${Math.round(totalSignals/totalScan*100)}%` : '-';
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('th-TH');
 }
 
-// 4. ลอจิกตารางและคลิกสลับกราฟ
-function renderTable() {
-    const tbody = document.getElementById('sigTableBody');
-    tbody.innerHTML = '';
-    Object.keys(ASSETS).forEach(key => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td style="color:var(--blue); text-decoration:underline; cursor:pointer;" onclick="switchChart('${key}')">${ASSETS[key].name}</td>
-            <td id="price-${key}">--</td>
-            <td id="status-${key}">WAIT</td>
-        `;
-        tbody.appendChild(row);
-    });
+function updateChart(){
+  const i = tf==='15'?'1':tf==='60'?'5':'15';
+  new TradingView.widget({width:"100%",height:"100%",symbol:ASSETS[chartFocus].tv,interval:i,timezone:"Asia/Bangkok",theme:"dark",style:"1",locale:"th",container_id:"tv_chart_container",studies:["RSI@tv-basicstudies","MACD@tv-basicstudies","BB@tv-basicstudies"]});
+}
+function switchChart(key){chartFocus=key;document.getElementById('focusTitle').textContent=`${ASSETS[key].name}`;updateChart();}
+window.toggleAsset=function(key){ASSETS[key].active=!ASSETS[key].active;document.getElementById(`asset-${key}`).classList.toggle('active',ASSETS[key].active);switchChart(key);runScanner();};
+function changeTF(t){tf=t;['tf15','tf60','tf240'].forEach(id=>document.getElementById(id).classList.remove('active'));document.getElementById(`tf${t}`).classList.add('active');updateChart();runScanner();}
+function setFilter(level){filterLevel=level;['fLoose','fNormal','fTight'].forEach(id=>document.getElementById(id).classList.remove('active'));const map={loose:'fLoose',normal:'fNormal',tight:'fTight'};document.getElementById(map[level]).classList.add('active');document.getElementById('filterInfo').innerHTML=FILTERS[level].desc;runScanner();}
+window.manualRefresh=async function(){runScanner();};
+
+const DKEY='tve_deriv_daily';
+function todayStr(){return new Date().toLocaleDateString('th-TH',{year:'numeric',month:'2-digit',day:'2-digit'});}
+function loadDaily(){try{const d=JSON.parse(localStorage.getItem(DKEY)||'null');if(!d||d.date!==todayStr()){const f={date:todayStr(),entries:[]};localStorage.setItem(DKEY,JSON.stringify(f));return f;}return d;}catch(e){return{date:todayStr(),entries:[]};}}
+function saveDaily(d){localStorage.setItem(DKEY,JSON.stringify(d));}
+
+function logSignalToTerminal(key, dir, stake) {
+  const d = loadDaily();
+  d.entries.push({
+    id: Date.now(),
+    time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
+    asset: key,
+    dir,
+    stake,
+    result: 'pending'
+  });
+  saveDaily(d);
+  renderDaily();
 }
 
-function switchChart(key) {
-    chartFocus = key;
-    document.getElementById('focusTitle').textContent = ASSETS[key].name;
-    updateChart();
-}
+function renderDaily(){
+  const d=loadDaily();
+  const res=d.entries.filter(e=>e.result!=='pending');
+  const wins=res.filter(e=>e.result==='win').length;const loses=res.filter(e=>e.result==='lose').length;
+  const wr=res.length>0?Math.round(wins/res.length*100):0;
+  
+  document.getElementById('dTotal').textContent=d.entries.length;
+  document.getElementById('dWin').textContent=wins;
+  document.getElementById('dLose').textContent=loses;
+  document.getElementById('dRate').textContent=res.length>0?`${wr}%`:'-';
+  document.getElementById('dWrFill').style.width=`${wr}%`;
 
-updateChart();
-renderTable();
+  const tbody=document.getElementById('logBody');
+  if(!d.entries.length){tbody.innerHTML='<tr><td colspan="5" class="log-empty">ยังไม่มีสัญญาณยิงพอร์ต</td></tr>';return;}
+  tbody.innerHTML=[...d.entries].reverse().slice(0,10).map(e=>{
+    const dir=e.dir==='buy'?'<span class="d-call">RISE</span>':'<span class="d-put">FALL</span>';
+    let resStr = e.result==='pending'?'<span class="r-pend">RUNNING</span>':(e.result==='win'?'<span class="r-win">WIN</span>':'<span class="r-lose">LOSE</span>');
+    return `<tr><td>${e.time}</td><td>${e.asset}</td><td>${dir}</td><td>$${e.stake}</td><td>${resStr}</td></tr>`;
+  }).join('');
+}
+window.resetDaily=function(){localStorage.removeItem(DKEY);renderDaily();};
+
+// START ENGINE LIFE LOOP
+updateChart(); renderDaily();
+updateMartingaleLabels();
+setInterval(runScanner, 12000); // ตั้งค่าลูปรันสแกนอัตโนมัติทุก 12 วินาที
 </script>
 </body>
 </html>
