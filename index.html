@@ -410,6 +410,7 @@ const MTF_MAP = {
   '240': { higherGranularity: 14400, higherLabel: 'H4' }  // entry M15 -> higher H4 (default)
 };
 const TF_GRAN_LABELS = { 300: 'M5', 900: 'M15', 1800: 'M30', 3600: 'H1', 14400: 'H4' };
+const TF_LOWER_LABEL = { '15': 'M1', '60': 'M5', '240': 'M15' };
 let mtfEnabled = true;
 let mtfSoftMode = true;     // true = sideways/flat on higher TF is ALLOWED (not blocked), just scored lower
 let mtfHigherGranularity = 900;   // currently selected higher-TF granularity (seconds) — user-editable
@@ -421,6 +422,14 @@ let soundEnabled = true;
 let telegramBotToken = '';
 let telegramChatId = '';
 let audioCtx = null;
+
+// ---- req_id bookkeeping for ticks_history requests (Deriv requires INTEGER req_id) ----
+// Deriv's req_id field must be a number. We can no longer encode the symbol/kind into
+// a string req_id, so instead we keep a counter and a lookup table mapping
+// req_id -> { key, isMtf } so the response handler can tell which request a given
+// response belongs to (Deriv always echoes req_id back in echo_req.req_id).
+let reqIdCounter = 1;
+let pendingHistoryRequests = {}; // reqId(number) -> { key, isMtf }
 
 const ASSETS = {
   R_10: { tv: "DERIV:10", sym: "R_10", active: true, name: "Volatility 10", dp: 3 },
@@ -528,13 +537,22 @@ function initFeed() {
       }
     }
 
-    if (data.msg_type === 'ticks_history' && data.candles && data.echo_req.ticks_history) {
-      const key = data.echo_req.ticks_history;
-      const reqId = data.echo_req.req_id || '';
-      if (reqId.startsWith('mtf-')) {
-        processHigherTfCandles(key, data.candles);
-      } else {
-        processAssetAnalysis(key, data.candles);
+    // NOTE: when a ticks_history request is sent with style:"candles", Deriv replies
+    // with msg_type "candles" (NOT "ticks_history" — that msg_type is only used for
+    // style:"ticks" / the legacy "history" shape). Both requests we send use
+    // style:"candles", so we must match on msg_type === 'candles' here.
+    // We identify which request a response belongs to via the numeric req_id we
+    // generated ourselves (see pendingHistoryRequests), since req_id must be an
+    // integer for Deriv's API and can no longer carry a 'mtf-' string prefix.
+    if (data.msg_type === 'candles' && data.candles) {
+      const reqInfo = pendingHistoryRequests[data.echo_req && data.echo_req.req_id];
+      if (reqInfo) {
+        delete pendingHistoryRequests[data.echo_req.req_id];
+        if (reqInfo.isMtf) {
+          processHigherTfCandles(reqInfo.key, data.candles);
+        } else {
+          processAssetAnalysis(reqInfo.key, data.candles);
+        }
       }
     }
   };
@@ -1101,22 +1119,29 @@ async function runScanner() {
   });
 
   activeKeys.forEach(key => {
+    // req_id MUST be an integer for Deriv's API (a string like "mtf-R_75-..." gets
+    // rejected with InputValidationFailed). We allocate a fresh numeric req_id per
+    // request and remember which symbol/kind it belongs to in pendingHistoryRequests,
+    // so the onmessage handler can route the response correctly via echo_req.req_id.
+    const entryReqId = reqIdCounter++;
+    pendingHistoryRequests[entryReqId] = { key, isMtf: false };
     ws.send(JSON.stringify({
       ticks_history: key,
       adjust_start_time: 1,
       count: 100,
       end: "latest",
       granularity: sec,
-      style: "candles"
+      style: "candles",
+      req_id: entryReqId
     }));
 
     // Higher-timeframe candles for MTF support/resistance + trend confirmation.
     // Uses the user-selected higher-TF granularity (mtfHigherGranularity), not a
     // fixed mapping — falls back to the MTF_MAP default the first time the entry
     // TF changes (see changeTF()).
-    // Tagged with a 'mtf-' req_id prefix so the response handler can tell it
-    // apart from the entry-TF request above (Deriv echoes req_id back to us).
     if (mtfEnabled && mtfHigherGranularity) {
+      const mtfReqId = reqIdCounter++;
+      pendingHistoryRequests[mtfReqId] = { key, isMtf: true };
       ws.send(JSON.stringify({
         ticks_history: key,
         adjust_start_time: 1,
@@ -1124,7 +1149,7 @@ async function runScanner() {
         end: "latest",
         granularity: mtfHigherGranularity,
         style: "candles",
-        req_id: `mtf-${key}-${Date.now()}`
+        req_id: mtfReqId
       }));
     }
   });
@@ -1197,7 +1222,6 @@ function changeTF(t) {
   updateChart(); runScanner();
 }
 
-const TF_LOWER_LABEL = { '15': 'M1', '60': 'M5', '240': 'M15' };
 function updateMtfLabels() {
   document.getElementById('mtfHigherLabel').textContent = mtfHigherLabelOverride;
   document.getElementById('mtfLowerLabel').textContent = TF_LOWER_LABEL[tf] || '-';
