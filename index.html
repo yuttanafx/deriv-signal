@@ -224,8 +224,8 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
         <button class="asset-btn active" id="asset-R_50" onclick="toggleAsset('R_50')">Volatility 50 <span class="tbadge">R_50</span></button>
         <button class="asset-btn active" id="asset-R_75" onclick="toggleAsset('R_75')">Volatility 75 <span class="tbadge">R_75</span></button>
         <button class="asset-btn" id="asset-R_100" onclick="toggleAsset('R_100')">Volatility 100 <span class="tbadge">R_100</span></button>
-        <button class="asset-btn" id="asset-1HZ75V" onclick="toggleAsset('1HZ75V')">Vol 75 (1s) <span class="tbadge">1HZ75V</span></button>
-        <button class="asset-btn" id="asset-1HZ100V" onclick="toggleAsset('1HZ100V')">Vol 100 (1s) <span class="tbadge">1HZ100V</span></button>
+        <button class="asset-btn" id="asset-1HZ25V" onclick="toggleAsset('1HZ25V')">Vol 25 (1s) <span class="tbadge">1HZ25V</span></button>
+        <button class="asset-btn" id="asset-1HZ50V" onclick="toggleAsset('1HZ50V')">Vol 50 (1s) <span class="tbadge">1HZ50V</span></button>
         <button class="asset-btn" id="asset-R_150" onclick="toggleAsset('R_150')">Volatility 150 <span class="tbadge">R_150</span></button>
       </div>
     </div>
@@ -245,9 +245,9 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
     <div class="sec">
       <div class="sec-title">โครงสร้างเวลาแท่งเทียน</div>
       <div class="row-btns">
-        <button class="rbtn active" id="tf15" onclick="changeTF('15')">15</button>
-        <button class="rbtn" id="tf60" onclick="changeTF('60')">1H</button>
-        <button class="rbtn" id="tf240" onclick="changeTF('240')">4H</button>
+        <button class="rbtn active" id="tf15" onclick="changeTF('15')">5</button>
+        <button class="rbtn" id="tf60" onclick="changeTF('60')">15</button>
+        <button class="rbtn" id="tf240" onclick="changeTF('240')">1H</button>
       </div>
       <div class="sec-title" style="margin-top:8px;">ระดับฟิลเตอร์กรองความเสี่ยง</div>
       <div class="row-btns">
@@ -437,8 +437,8 @@ const ASSETS = {
   R_50: { tv: "DERIV:50", sym: "R_50", active: true, name: "Volatility 50", dp: 4 },
   R_75: { tv: "DERIV:75", sym: "R_75", active: true, name: "Volatility 75", dp: 4 },
   R_100: { tv: "DERIV:100", sym: "R_100", active: false, name: "Volatility 100", dp: 2 },
-  "1HZ75V": { tv: "DERIV:751S", sym: "1HZ75V", active: false, name: "Vol 75 (1s)", dp: 4 },
-  "1HZ100V": { tv: "DERIV:1001S", sym: "1HZ100V", active: false, name: "Vol 100 (1s)", dp: 2 },
+  "1HZ25V": { tv: "DERIV:251S", sym: "1HZ25V", active: false, name: "Vol 25 (1s)", dp: 3 },
+  "1HZ50V": { tv: "DERIV:501S", sym: "1HZ50V", active: false, name: "Vol 50 (1s)", dp: 4 },
   R_150: { tv: "DERIV:150", sym: "R_150", active: false, name: "Volatility 150", dp: 4 }
 };
 
@@ -934,7 +934,10 @@ function updateMtfInfoText() {
 function openConfirm(symbol, dir) {
   if (!isAuthorized) { alert('กรุณาเชื่อมต่อ Deriv API ก่อนส่งคำสั่งครับ'); return; }
   const stake = calcSuggestedStake();
-  const durationMinutes = (tf === '15') ? 3 : (tf === '60' ? 15 : 45);
+  // Duration sent to Deriv now matches the TF button label exactly:
+  // tf='15' (button "5") -> 5 min, tf='60' (button "15") -> 15 min, tf='240' (button "1H") -> 60 min.
+  // The candle granularity used for signal calculation is unchanged (still M1/M5/M15 — see granularityMap in runScanner()).
+  const durationMinutes = (tf === '15') ? 5 : (tf === '60' ? 15 : 60);
   pendingOrder = { symbol, dir, stake, durationMinutes };
 
   document.getElementById('cf-asset').textContent = ASSETS[symbol].name;
