@@ -432,14 +432,16 @@ let reqIdCounter = 1;
 let pendingHistoryRequests = {}; // reqId(number) -> { key, isMtf }
 
 const ASSETS = {
-  R_10: { tv: "DERIV:10", sym: "R_10", active: true, name: "Volatility 10", dp: 3 },
-  R_25: { tv: "DERIV:25", sym: "R_25", active: true, name: "Volatility 25", dp: 3 },
-  R_50: { tv: "DERIV:50", sym: "R_50", active: true, name: "Volatility 50", dp: 4 },
-  R_75: { tv: "DERIV:75", sym: "R_75", active: true, name: "Volatility 75", dp: 4 },
-  R_100: { tv: "DERIV:100", sym: "R_100", active: false, name: "Volatility 100", dp: 2 },
-  "1HZ25V": { tv: "DERIV:251S", sym: "1HZ25V", active: false, name: "Vol 25 (1s)", dp: 3 },
-  "1HZ50V": { tv: "DERIV:501S", sym: "1HZ50V", active: false, name: "Vol 50 (1s)", dp: 4 },
-  R_150: { tv: "DERIV:150", sym: "R_150", active: false, name: "Volatility 150", dp: 4 }
+  R_10: { tv: "DERIV:VOLATILITY_10_INDEX", sym: "R_10", active: true, name: "Volatility 10", dp: 3 },
+  R_25: { tv: "DERIV:VOLATILITY_25_INDEX", sym: "R_25", active: true, name: "Volatility 25", dp: 3 },
+  R_50: { tv: "DERIV:VOLATILITY_50_INDEX", sym: "R_50", active: true, name: "Volatility 50", dp: 4 },
+  R_75: { tv: "DERIV:VOLATILITY_75_INDEX", sym: "R_75", active: true, name: "Volatility 75", dp: 4 },
+  R_100: { tv: "DERIV:VOLATILITY_100_INDEX", sym: "R_100", active: false, name: "Volatility 100", dp: 2 },
+  "1HZ25V": { tv: "DERIV:VOLATILITY_25_1S_INDEX", sym: "1HZ25V", active: false, name: "Vol 25 (1s)", dp: 3 },
+  "1HZ50V": { tv: "DERIV:VOLATILITY_50_1S_INDEX", sym: "1HZ50V", active: false, name: "Vol 50 (1s)", dp: 4 },
+  // NOTE: Deriv only offers Volatility 150 as a 1-second-tick index (no plain 2s version exists
+  // on TradingView) — using the confirmed 1S symbol here so the chart doesn't 404 if this is enabled.
+  R_150: { tv: "DERIV:VOLATILITY_150_1S_INDEX", sym: "R_150", active: false, name: "Volatility 150", dp: 4 }
 };
 
 // lookback = how many bars back the Donchian resistance/support window covers.
