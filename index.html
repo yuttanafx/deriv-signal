@@ -139,7 +139,7 @@ body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-ser
 .r-lose{color:var(--red);font-weight:700;}
 .r-pend{color:var(--gold);font-size:8px;}
 </style>
-<script src="https://s3.tradingview.com/tv.js"></script>
+<script src="https://s3.tradingview.com/tv.js" defer></script>
 </head>
 <body>
 <div class="header">
@@ -404,13 +404,19 @@ let tradeLog = [];            // orders YOU confirmed: [{time, asset, dir, stake
 // The user can override the higher TF manually via the #mtf-higher-select dropdown
 // (see mtfHigherGranularity / mtfHigherLabelOverride below) — the map below is only
 // the starting default shown when you switch the entry TF.
+// Button labels are "5" / "15" / "1H" (this is the order-duration label, see tf usage
+// in openConfirm()) — the higher TF picked here must be bigger than that so it actually
+// confirms a broader trend instead of just re-checking the same timeframe:
+//   button "5"  (tf='15')  -> higher M15 (default)
+//   button "15" (tf='60')  -> higher H1  (default)
+//   button "1H" (tf='240') -> higher H4  (default)
 const MTF_MAP = {
-  '15':  { higherGranularity: 900,  higherLabel: 'M15' }, // entry M1  -> higher M15 (default)
-  '60':  { higherGranularity: 3600, higherLabel: 'H1'  }, // entry M5  -> higher H1 (default)
-  '240': { higherGranularity: 14400, higherLabel: 'H4' }  // entry M15 -> higher H4 (default)
+  '15':  { higherGranularity: 900,  higherLabel: 'M15' },
+  '60':  { higherGranularity: 3600, higherLabel: 'H1'  },
+  '240': { higherGranularity: 14400, higherLabel: 'H4' }
 };
 const TF_GRAN_LABELS = { 300: 'M5', 900: 'M15', 1800: 'M30', 3600: 'H1', 14400: 'H4' };
-const TF_LOWER_LABEL = { '15': 'M1', '60': 'M5', '240': 'M15' };
+const TF_LOWER_LABEL = { '15': '5', '60': '15', '240': '1H' };
 let mtfEnabled = true;
 let mtfSoftMode = true;     // true = sideways/flat on higher TF is ALLOWED (not blocked), just scored lower
 let mtfHigherGranularity = 900;   // currently selected higher-TF granularity (seconds) — user-editable
